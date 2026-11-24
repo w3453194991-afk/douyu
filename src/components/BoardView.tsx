@@ -458,7 +458,7 @@ export function BoardView({
     };
 
     const drawCodes = () => {
-      const { project, showCodes } = latest.current;
+      const { project, showCodes, showGuide } = latest.current;
       if (!showCodes) return;
       const cp = cellPx();
       if (cp < 8) return;
@@ -469,7 +469,7 @@ export function BoardView({
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.font = `700 ${font}px "PingFang SC","Microsoft YaHei",sans-serif`;
-      const label = (x: number, y: number, hex: string) => {
+      const label = (x: number, y: number, hex: string, guide = false) => {
         if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
         const raw = beadCode(hex).code;
         if (!raw) return;
@@ -478,19 +478,47 @@ export function BoardView({
         const sx = (x + 0.5) * cp + v.tx;
         const sy = (y + 0.5) * cp + v.ty;
         if (sx < -30 || sy < -20 || sx > v.w + 30 || sy > v.h + 20) return;
+        if (guide) {
+          // 图纸目标是半透明的，编号用白字 + 黑描边，避免和底下的淡豆融在一起。
+          ctx.globalAlpha = 0.78;
+          ctx.lineWidth = Math.max(1.2, font * 0.34);
+          ctx.strokeStyle = 'rgba(10,10,12,0.72)';
+          ctx.strokeText(code, sx, sy);
+          ctx.fillStyle = '#fffdf8';
+          ctx.fillText(code, sx, sy);
+          return;
+        }
         const n = parseInt(hex.slice(1), 16);
         const bright = (((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000;
         const light = bright > 155;
+        ctx.globalAlpha = 1;
         ctx.lineWidth = Math.max(1.2, font * 0.3);
         ctx.strokeStyle = light ? 'rgba(255,255,255,0.78)' : 'rgba(16,16,18,0.68)';
         ctx.strokeText(code, sx, sy);
         ctx.fillStyle = light ? '#17181d' : '#fffdf8';
         ctx.fillText(code, sx, sy);
       };
-      for (const b of project.loose) label(b.x, b.y, b.c);
+      const occupied = new Set<string>();
+      for (const b of project.loose) {
+        occupied.add(beadKey(b.x, b.y));
+        label(b.x, b.y, b.c);
+      }
       for (const piece of project.pieces) {
         for (const b of piece.beads) {
-          label(piece.pos[0] + b.x, piece.pos[1] + b.y, b.c);
+          const x = piece.pos[0] + b.x;
+          const y = piece.pos[1] + b.y;
+          occupied.add(beadKey(x, y));
+          label(x, y, b.c);
+        }
+      }
+      if (project.guide && showGuide) {
+        for (const piece of project.guide.pieces) {
+          for (const b of piece.beads) {
+            const x = piece.pos[0] + b.x;
+            const y = piece.pos[1] + b.y;
+            if (occupied.has(beadKey(x, y))) continue;
+            label(x, y, b.c, true);
+          }
         }
       }
       ctx.restore();
