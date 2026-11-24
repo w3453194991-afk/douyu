@@ -72,7 +72,7 @@ const paletteY = boardY + boardSize + 34;
 const paletteItem = (W - 32) / COLORS.length;
 const toolbarY = H - 80;
 const toolbarH = 44;
-const toolbarItem = (W - 36) / 4;
+const toolbarItem = (W - 36) / 5;
 
 let board = starterBoard();
 let fused = Array.from({ length: N }, () => Array(N).fill(false));
@@ -261,7 +261,7 @@ function draw() {
   }
 
   // toolbar
-  const tools = ['撤销', '橡皮', '熨烫', '清空'];
+  const tools = ['撤销', '橡皮', '熨烫', '图纸', '清空'];
   for (let i = 0; i < tools.length; i++) {
     const x = 18 + i * toolbarItem;
     const w = toolbarItem - 6;
@@ -287,8 +287,104 @@ function draw() {
   ctx.textAlign = 'left';
 }
 
-function handle(x, y) {
-  // board
+function choosePhotoPattern() {
+  wx.showModal({
+    title: '照片转图纸',
+    content: '会按 29×29 重新配成 8 色豆图，并替换当前拼板。继续吗？',
+    success(res) {
+      if (!res.confirm) return;
+      const done = (path) => loadPhotoPattern(path);
+      if (wx.chooseMedia) {
+        wx.chooseMedia({
+          count: 1,
+          mediaType: ['image'],
+          sourceType: ['album', 'camera'],
+          success(r) {
+            const f = r.tempFiles && r.tempFiles[0];
+            if (f) done(f.tempFilePath);
+          },
+        });
+      } else if (wx.chooseImage) {
+        wx.chooseImage({
+          count: 1,
+          sizeType: ['compressed'],
+          success(r) {
+            if (r.tempFilePaths && r.tempFilePaths[0]) done(r.tempFilePaths[0]);
+          },
+        });
+      } else {
+        wx.showToast({ title: '当前环境不支持选图', icon: 'none' });
+      }
+    },
+  });
+}
+
+function loadPhotoPattern(path) {
+  if (wx.showLoading) wx.showLoading({ title: '正在配豆…' });
+  const img = wx.createImage();
+  img.onload = () => {
+    try {
+      const cv = wx.createOffscreenCanvas
+        ? wx.createOffscreenCanvas({ type: '2d', width: N, height: N })
+        : wx.createCanvas();
+      const c2 = cv.getContext('2d');
+      const s = Math.min(img.width || 1, img.height || 1);
+      const sx = ((img.width || s) - s) / 2;
+      const sy = ((img.height || s) - s) / 2;
+      c2.drawImage(img, sx, sy, s, s, 0, 0, N, N);
+      const data = c2.getImageData(0, 0, N, N).data;
+      const palette = COLORS.map((c) => ({
+        r: parseInt(c.hex.slice(1, 3), 16),
+        g: parseInt(c.hex.slice(3, 5), 16),
+        b: parseInt(c.hex.slice(5, 7), 16),
+      }));
+      const next = emptyBoard();
+      let n = 0;
+      for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+          const i = (y * N + x) * 4;
+          if (data[i + 3] < 32) continue;
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          let best = 0;
+          let bestD = Infinity;
+          for (let k = 0; k < palette.length; k++) {
+            const p = palette[k];
+            const d = (r - p.r) ** 2 * 2 + (g - p.g) ** 2 * 4 + (b - p.b) ** 2 * 3;
+            if (d < bestD) {
+              bestD = d;
+              best = k;
+            }
+          }
+          next[y][x] = best;
+          n++;
+        }
+      }
+      if (!n) {
+        wx.showToast({ title: '这张图没读出颜色', icon: 'none' });
+        return;
+      }
+      snap();
+      board = next;
+      fused = Array.from({ length: N }, () => Array(N).fill(false));
+      save();
+      draw();
+      wx.showToast({ title: `已转 ${n} 格`, icon: 'none' });
+    } catch (e) {
+      wx.showToast({ title: '转图失败，换一张试试', icon: 'none' });
+    } finally {
+      if (wx.hideLoading) wx.hideLoading();
+    }
+  };
+  img.onerror = () => {
+    if (wx.hideLoading) wx.hideLoading();
+    wx.showToast({ title: '图片打不开', icon: 'none' });
+  };
+  img.src = path;
+}
+
+function handle(x, y) {  // board
   if (x >= boardX && x <= boardX + boardSize && y >= boardY && y <= boardY + boardSize) {
     const bx = Math.floor((x - boardX) / cell);
     const by = Math.floor((y - boardY) / cell);
@@ -323,7 +419,7 @@ function handle(x, y) {
   // toolbar
   if (y >= toolbarY && y <= toolbarY + toolbarH) {
     const i = Math.floor((x - 18) / toolbarItem);
-    if (i < 0 || i > 3) return;
+    if (i < 0 || i > 4) return;
     if (i === 0) {
       const prev = history.pop();
       if (prev) {
@@ -341,6 +437,8 @@ function handle(x, y) {
       }
       save();
     } else if (i === 3) {
+      choosePhotoPattern();
+    } else if (i === 4) {
       snap();
       board = emptyBoard();
       fused = Array.from({ length: N }, () => Array(N).fill(false));
