@@ -87,6 +87,218 @@ let rowMode = false;
 let rowFocus = 0;
 let stock = COLORS.map(() => 0);
 
+/* ------------------------------ mini game API ---------------------------- */
+// 开发者工具默认；真机请换成电脑局域网 IP 或 HTTPS 域名。
+const API_BASE = 'http://127.0.0.1:8787';
+let screen = 'studio'; // studio | gallery | detail
+let token = '';
+let me = null;
+let works = [];
+let worksLoading = false;
+let galleryPage = 0;
+let detail = null;
+let comments = [];
+let detailLoading = false;
+let busyAction = '';
+const coverCache = {};
+
+function imageUrl(url) {
+  if (!url) return '';
+  return /^https?:\/\//.test(url) ? url : `${API_BASE}${url}`;
+}
+
+function cover(url) {
+  const u = imageUrl(url);
+  if (!u) return null;
+  if (!coverCache[u]) {
+    const img = wx.createImage();
+    const entry = { img, ready: false };
+    img.onload = () => {
+      entry.ready = true;
+      draw();
+    };
+    img.onerror = () => {};
+    img.src = u;
+    coverCache[u] = entry;
+  }
+  return coverCache[u];
+}
+
+function toast(title) {
+  if (wx.showToast) wx.showToast({ title, icon: 'none' });
+}
+
+function request(path, method = 'GET', data = null) {
+  return new Promise((resolve, reject) => {
+    if (!wx.request) return reject(new Error('当前环境不支持网络请求'));
+    wx.request({
+      url: `${API_BASE}${path}`,
+      method,
+      data: data || undefined,
+      timeout: 10000,
+      header: {
+        'content-type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      success(res) {
+        if (res.statusCode >= 200 && res.statusCode < 300) resolve(res.data);
+        else reject({ status: res.statusCode, data: res.data });
+      },
+      fail: reject,
+    });
+  });
+}
+
+function ensureSession() {
+  if (me && token) return Promise.resolve(me);
+  try {
+    token = wx.getStorageSync('douyu.game.token') || '';
+  } catch (e) {}
+  const body = token ? { token } : {};
+  return request('/api/session', 'POST', body)
+    .then((data) => {
+      token = data.token;
+      me = data.user;
+      try {
+        wx.setStorageSync('douyu.game.token', token);
+      } catch (e) {}
+      return me;
+    })
+    .catch(() => null);
+}
+
+function apiError(err) {
+  const msg = err && err.data && (err.data.message || err.data.error);
+  if (err && err.status === 402) return '豆币不够，先去攒一点';
+  return msg || '网络没有连上';
+}
+
+function openGallery() {
+  screen = 'gallery';
+  overlay = null;
+  rowMode = false;
+  view3d = false;
+  draw();
+  loadGallery();
+}
+
+function loadGallery() {
+  worksLoading = true;
+  galleryPage = 0;
+  draw();
+  ensureSession()
+    .then(() => request('/api/works?filter=latest'))
+    .then((data) => {
+      works = data.works || [];
+      worksLoading = false;
+      draw();
+    })
+    .catch((err) => {
+      worksLoading = false;
+      toast(apiError(err));
+      draw();
+    });
+}
+
+function openDetail(id) {
+  screen = 'detail';
+  detail = works.find((w) => w.id === id) || null;
+  comments = [];
+  detailLoading = true;
+  draw();
+  ensureSession()
+    .then(() =>
+      Promise.all([
+        request(`/api/works/${encodeURIComponent(id)}`),
+        request(`/api/works/${encodeURIComponent(id)}/comments`),
+      ]),
+    )
+    .then(([w, c]) => {
+      detail = w.work;
+      comments = c.comments || [];
+      detailLoading = false;
+      draw();
+    })
+    .catch((err) => {
+      detailLoading = false;
+      toast(apiError(err));
+      draw();
+    });
+}
+
+function doAction(kind) {
+  if (!detail || busyAction) return;
+  const id = detail.id;
+  if (kind === 'comment') {
+    if (!wx.showModal) return;
+    wx.showModal({
+      title: '写留言',
+      editable: true,
+      placeholderText: '留一句给作者或下一位复刻的人…',
+      success(res) {
+        const body = String((res && (res.content || res.value)) || '').trim();
+        if (!res.confirm || !body) return;
+        busyAction = 'comment';
+        ensureSession()
+          .then(() => request(`/api/works/${encodeURIComponent(id)}/comments`, 'POST', { body }))
+          .then(() => request(`/api/works/${encodeURIComponent(id)}/comments`))
+          .then((c) => {
+            comments = c.comments || [];
+            detail.commentCount = comments.length;
+            busyAction = '';
+            draw();
+          })
+          .catch((err) => {
+            busyAction = '';
+            toast(apiError(err));
+          });
+      },
+    });
+    return;
+  }
+
+  const path =
+    kind === 'like' ? 'like' : kind === 'collect' ? 'collect' : kind === 'unlock' ? 'unlock' : '';
+  if (!path) return;
+  if (kind === 'unlock' && detail.price > 0 && !detail.unlocked) {
+    wx.showModal({
+      title: '解锁这张图纸',
+      content: `需要 ${detail.price} 豆币，解锁后可以继续改造。`,
+      success(res) {
+        if (res.confirm) runAction(kind, id);
+      },
+    });
+    return;
+  }
+  runAction(kind, id);
+}
+
+function runAction(kind, id) {
+  busyAction = kind;
+  ensureSession()
+    .then(() => request(`/api/works/${encodeURIComponent(id)}/${kind}`, 'POST', {}))
+    .then((data) => {
+      busyAction = '';
+      if (kind === 'like') {
+        detail.liked = data.liked;
+        detail.likes = data.likes;
+      } else if (kind === 'collect') {
+        detail.collected = data.collected;
+        detail.collects = data.collects;
+      } else if (kind === 'unlock') {
+        detail = data.work;
+        if (me && typeof data.points === 'number') me.points = data.points;
+        toast('图纸已解锁');
+      }
+      draw();
+    })
+    .catch((err) => {
+      busyAction = '';
+      toast(apiError(err));
+      draw();
+    });
+}
+
 function save() {
   try {
     wx.setStorageSync('douyu.game.board', {
@@ -180,6 +392,14 @@ function countBeads() {
 }
 
 function draw() {
+  if (screen === 'gallery') {
+    drawGallery();
+    return;
+  }
+  if (screen === 'detail') {
+    drawDetail();
+    return;
+  }
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, W, H);
 
@@ -218,6 +438,18 @@ function draw() {
   ctx.textAlign = 'left';
 
   // menu + save
+  roundRect(W - 182, SAFE_TOP + 46, 50, 22, 8);
+  ctx.fillStyle = 'rgba(255,255,255,0.78)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.15)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('集市', W - 157, SAFE_TOP + 61);
+  ctx.textAlign = 'left';
+
   roundRect(W - 126, SAFE_TOP + 46, 50, 22, 8);
   ctx.fillStyle = 'rgba(255,255,255,0.78)';
   ctx.fill();
@@ -475,6 +707,243 @@ function drawInventory() {
   ctx.textAlign = 'left';
 }
 
+function drawScreenHeader(title) {
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, W, H);
+  roundRect(16, SAFE_TOP + 12, 52, 28, 9);
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.14)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('返回', 42, SAFE_TOP + 30);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 22px sans-serif';
+  ctx.fillText(title, 82, SAFE_TOP + 32);
+  if (me) {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = MUTED;
+    ctx.font = '10px sans-serif';
+    ctx.fillText(`豆币 ${me.points}`, W - 16, SAFE_TOP + 30);
+    ctx.textAlign = 'left';
+  }
+}
+
+function fitText(text, maxW) {
+  let s = String(text || '');
+  if (ctx.measureText(s).width <= maxW) return s;
+  while (s.length > 1 && ctx.measureText(`${s}…`).width > maxW) s = s.slice(0, -1);
+  return `${s}…`;
+}
+
+function wrapped(text, x, y, maxW, lineH, maxLines) {
+  let line = '';
+  let lines = 0;
+  for (const ch of String(text || '')) {
+    const test = line + ch;
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line, x, y + lines * lineH);
+      lines++;
+      line = ch;
+      if (lines >= maxLines) return;
+    } else line = test;
+  }
+  if (line && lines < maxLines) ctx.fillText(line, x, y + lines * lineH);
+}
+
+function drawCoverBox(work, x, y, w, h, radius) {
+  roundRect(x, y, w, h, radius);
+  ctx.fillStyle = '#E6D8C2';
+  ctx.fill();
+  const entry = cover((work.images && work.images[0]) || work.coverUrl);
+  if (entry && entry.ready) {
+    ctx.save();
+    roundRect(x, y, w, h, radius);
+    ctx.clip();
+    ctx.drawImage(entry.img, x, y, w, h);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(work.title || '豆').slice(0, 1), x + w / 2, y + h / 2 + 6);
+    ctx.textAlign = 'left';
+  }
+  ctx.strokeStyle = 'rgba(43,33,23,0.12)';
+  ctx.lineWidth = 1;
+  roundRect(x, y, w, h, radius);
+  ctx.stroke();
+}
+
+function galleryCard(i) {
+  const gap = 10;
+  const cw = (W - 28 - gap) / 2;
+  const ch = 154;
+  const top = SAFE_TOP + 72;
+  return {
+    x: 14 + (i % 2) * (cw + gap),
+    y: top + Math.floor(i / 2) * (ch + 10),
+    w: cw,
+    h: ch,
+  };
+}
+
+function drawGallery() {
+  drawScreenHeader('集市');
+  if (worksLoading && !works.length) {
+    ctx.fillStyle = MUTED;
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('正在打开集市…', W / 2, H * 0.45);
+    ctx.textAlign = 'left';
+    return;
+  }
+  if (!works.length) {
+    ctx.fillStyle = MUTED;
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('集市还没有作品', W / 2, H * 0.45);
+    ctx.textAlign = 'left';
+    return;
+  }
+
+  const list = works.slice(galleryPage * 8, galleryPage * 8 + 8);
+  for (let i = 0; i < list.length; i++) {
+    const w = list[i];
+    const r = galleryCard(i);
+    drawCoverBox(w, r.x, r.y, r.w, r.h - 47, 10);
+    ctx.fillStyle = INK;
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(fitText(w.title, r.w), r.x, r.y + r.h - 31);
+    ctx.fillStyle = MUTED;
+    ctx.font = '8px sans-serif';
+    ctx.fillText(fitText(w.author && w.author.name, r.w - 44), r.x, r.y + r.h - 16);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = w.price ? CORAL : MUTED;
+    ctx.font = 'bold 8px sans-serif';
+    ctx.fillText(w.price ? `${w.price} 豆币` : '免费', r.x + r.w, r.y + r.h - 16);
+    ctx.textAlign = 'left';
+  }
+
+  if (works.length > 8) {
+    const y = H - 56;
+    roundRect(16, y, 78, 30, 9);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fill();
+    ctx.fillStyle = galleryPage > 0 ? INK : MUTED;
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('上一页', 55, y + 19);
+    roundRect(W - 94, y, 78, 30, 9);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fill();
+    ctx.fillStyle = galleryPage < Math.ceil(works.length / 8) - 1 ? INK : MUTED;
+    ctx.fillText('下一页', W - 55, y + 19);
+    ctx.textAlign = 'left';
+  }
+}
+
+function detailRects() {
+  const top = SAFE_TOP + 76;
+  const coverH = 200;
+  const btnY = top + coverH + 104;
+  const collect = { x: 16, y: btnY, w: 102, h: 38 };
+  const like = { x: 126, y: btnY, w: 102, h: 38 };
+  const unlock = { x: 236, y: btnY, w: W - 252, h: 38 };
+  const comment = { x: 16, y: btnY + 48, w: W - 32, h: 34 };
+  return { top, coverH, btnY, collect, like, unlock, comment };
+}
+
+function drawDetail() {
+  drawScreenHeader('作品');
+  if (!detail) {
+    ctx.fillStyle = MUTED;
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(detailLoading ? '正在打开作品…' : '作品不在了', W / 2, H * 0.45);
+    ctx.textAlign = 'left';
+    return;
+  }
+  const r = detailRects();
+  drawCoverBox(detail, 16, r.top, W - 32, r.coverH, 14);
+
+  let y = r.top + r.coverH + 30;
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 19px sans-serif';
+  ctx.fillText(fitText(detail.title, W - 32), 16, y);
+  y += 18;
+  ctx.fillStyle = MUTED;
+  ctx.font = '9px sans-serif';
+  ctx.fillText(
+    `${detail.author ? detail.author.name : '豆友'} · ${detail.partCount || 0} 块零件 · ${detail.beadCount || 0} 颗豆`,
+    16,
+    y,
+  );
+  y += 18;
+  ctx.fillStyle = '#5F5548';
+  ctx.font = '10px sans-serif';
+  wrapped(detail.desc || '作者还没有写介绍。', 16, y, W - 32, 15, 2);
+
+  const buttons = [
+    { r: r.collect, label: detail.collected ? `★ 已收藏 ${detail.collects}` : `☆ 收藏 ${detail.collects}` },
+    { r: r.like, label: detail.liked ? `♥ 已心动 ${detail.likes}` : `♡ 心动 ${detail.likes}` },
+    {
+      r: r.unlock,
+      label: detail.unlocked ? '已解锁' : detail.price > 0 ? `解锁 ${detail.price}` : '免费',
+    },
+  ];
+  for (const b of buttons) {
+    roundRect(b.r.x, b.r.y, b.r.w, b.r.h, 9);
+    ctx.fillStyle = b.r === r.unlock && !detail.unlocked ? CORAL : 'rgba(255,255,255,0.72)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(53,41,27,0.15)';
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = b.r === r.unlock && !detail.unlocked ? '#fff' : INK;
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText(b.label, b.r.x + b.r.w / 2, b.r.y + 23);
+    ctx.textAlign = 'left';
+  }
+
+  roundRect(r.comment.x, r.comment.y, r.comment.w, r.comment.h, 9);
+  ctx.fillStyle = '#FFFDF8';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.12)';
+  ctx.stroke();
+  ctx.fillStyle = MUTED;
+  ctx.font = '10px sans-serif';
+  ctx.fillText(`留言 ${detail.commentCount || 0} · 点这里写一句`, r.comment.x + 12, r.comment.y + 22);
+
+  const cy = r.comment.y + r.comment.h + 24;
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText('最近留言', 16, cy);
+  if (!comments.length) {
+    ctx.fillStyle = MUTED;
+    ctx.font = '9px sans-serif';
+    ctx.fillText('还没有留言，做第一个吧。', 16, cy + 20);
+  } else {
+    comments.slice(0, 3).forEach((c, i) => {
+      const yy = cy + 20 + i * 35;
+      ctx.fillStyle = INK;
+      ctx.font = 'bold 9px sans-serif';
+      ctx.fillText(fitText(c.author ? c.author.name : '豆友', 120), 16, yy);
+      ctx.fillStyle = MUTED;
+      ctx.font = '9px sans-serif';
+      ctx.fillText(fitText(c.body, W - 32), 16, yy + 14);
+    });
+  }
+
+  if (detailLoading) {
+    ctx.fillStyle = MUTED;
+    ctx.font = '9px sans-serif';
+    ctx.fillText('正在同步…', W - 80, SAFE_TOP + 30);
+  }
+}
 function drawToolbar() {
   const tools = ['撤销', '橡皮', '熨烫', '图纸', view3d ? '返回' : '3D', '清空'];
   for (let i = 0; i < tools.length; i++) {
@@ -729,8 +1198,22 @@ function loadPhotoPattern(path) {
 }
 
 function handle(x, y) {
+  if (screen === 'gallery') {
+    handleGallery(x, y);
+    return;
+  }
+  if (screen === 'detail') {
+    handleDetail(x, y);
+    return;
+  }
   if (overlay) {
     handleOverlay(x, y);
+    return;
+  }
+
+  // marketplace button
+  if (x >= W - 182 && x <= W - 132 && y >= SAFE_TOP + 42 && y <= SAFE_TOP + 72) {
+    openGallery();
     return;
   }
 
@@ -826,6 +1309,57 @@ function handle(x, y) {
       save();
     }
     draw();
+  }
+}
+
+function handleGallery(x, y) {
+  if (x >= 16 && x <= 68 && y >= SAFE_TOP + 12 && y <= SAFE_TOP + 42) {
+    screen = 'studio';
+    draw();
+    return;
+  }
+  const list = works.slice(galleryPage * 8, galleryPage * 8 + 8);
+  for (let i = 0; i < list.length; i++) {
+    const r = galleryCard(i);
+    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+      openDetail(list[i].id);
+      return;
+    }
+  }
+  if (works.length > 8) {
+    const by = H - 56;
+    if (y >= by && y <= by + 30) {
+      if (x >= 16 && x <= 94) {
+        galleryPage = Math.max(0, galleryPage - 1);
+        draw();
+      } else if (x >= W - 94 && x <= W - 16) {
+        galleryPage = Math.min(Math.ceil(works.length / 8) - 1, galleryPage + 1);
+        draw();
+      }
+    }
+  }
+}
+
+function handleDetail(x, y) {
+  if (x >= 16 && x <= 68 && y >= SAFE_TOP + 12 && y <= SAFE_TOP + 42) {
+    screen = 'gallery';
+    detail = null;
+    comments = [];
+    draw();
+    return;
+  }
+  if (!detail) return;
+  const r = detailRects();
+  if (y >= r.collect.y && y <= r.collect.y + r.collect.h) {
+    if (x >= r.collect.x && x <= r.collect.x + r.collect.w) return doAction('collect');
+    if (x >= r.like.x && x <= r.like.x + r.like.w) return doAction('like');
+    if (x >= r.unlock.x && x <= r.unlock.x + r.unlock.w) {
+      if (detail.unlocked) return;
+      return doAction('unlock');
+    }
+  }
+  if (x >= r.comment.x && x <= r.comment.x + r.comment.w && y >= r.comment.y && y <= r.comment.y + r.comment.h) {
+    doAction('comment');
   }
 }
 
