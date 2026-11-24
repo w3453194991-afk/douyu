@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index"
   ],
+  "entryPagePath": "pages/index/index",
   "window": {
     "navigationStyle": "custom",
     "backgroundColor": "#FBF7EE",
