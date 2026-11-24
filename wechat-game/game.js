@@ -109,6 +109,7 @@ let me = null;
 let works = [];
 let worksLoading = false;
 let galleryPage = 0;
+let galleryFilter = 'latest';
 let detail = null;
 let comments = [];
 let detailLoading = false;
@@ -200,7 +201,7 @@ function loadGallery() {
   galleryPage = 0;
   draw();
   ensureSession()
-    .then(() => request('/api/works?filter=latest'))
+    .then(() => request(`/api/works?filter=${encodeURIComponent(galleryFilter)}`))
     .then((data) => {
       works = data.works || [];
       worksLoading = false;
@@ -768,7 +769,7 @@ function drawMenu() {
   const x = W / 2 - 140;
   const y = SAFE_TOP + 120;
   const w = 280;
-  const h = 354;
+  const h = 408;
   roundRect(x, y, w, h, 18);
   ctx.fillStyle = BG;
   ctx.fill();
@@ -780,29 +781,41 @@ function drawMenu() {
   ctx.fillText('豆屿菜单', x + 20, y + 38);
   ctx.fillStyle = MUTED;
   ctx.font = '10px sans-serif';
-  ctx.fillText('拼板、豆仓、按行跟做', x + 20, y + 55);
+  ctx.fillText('拼板、豆仓、按行、导出', x + 20, y + 55);
 
   const items = [
     ['豆仓 / 缺色', '查当前用豆和库存'],
     ['按行跟做', '一次亮一行'],
     ['保存图片', '把当前画面存相册'],
     ['导出 A4 图纸', '生成 29×29 图纸并保存'],
+    ['分享小游戏', '把豆屿发给朋友'],
     ['关闭', '回到拼板'],
   ];
   for (let i = 0; i < items.length; i++) {
-    const iy = y + 78 + i * 52;
-    roundRect(x + 16, iy, w - 32, 42, 10);
-    ctx.fillStyle = i === 4 ? 'rgba(255,255,255,0.45)' : '#FFFDF8';
+    const iy = y + 78 + i * 50;
+    roundRect(x + 16, iy, w - 32, 40, 10);
+    ctx.fillStyle = i === 5 ? 'rgba(255,255,255,0.45)' : '#FFFDF8';
     ctx.fill();
     ctx.strokeStyle = 'rgba(53,41,27,0.10)';
     ctx.stroke();
-    ctx.fillStyle = i === 4 ? MUTED : INK;
+    ctx.fillStyle = i === 5 ? MUTED : INK;
     ctx.font = 'bold 12px sans-serif';
-    ctx.fillText(items[i][0], x + 28, iy + 18);
+    ctx.fillText(items[i][0], x + 28, iy + 17);
     ctx.fillStyle = MUTED;
     ctx.font = '9px sans-serif';
-    ctx.fillText(items[i][1], x + 28, iy + 32);
+    ctx.fillText(items[i][1], x + 28, iy + 31);
   }
+}
+
+function shareGame() {
+  if (!wx.shareAppMessage) {
+    toast('当前环境不支持分享');
+    return;
+  }
+  wx.shareAppMessage({
+    title: '豆屿 · 拼豆小岛',
+    imageUrl: '',
+  });
 }
 
 function drawInventory() {
@@ -944,13 +957,13 @@ function drawCoverBox(work, x, y, w, h, radius) {
 }
 
 function galleryCard(i) {
-  const gap = 10;
+  const gap = 8;
   const cw = (W - 28 - gap) / 2;
-  const ch = 154;
-  const top = SAFE_TOP + 72;
+  const ch = 146;
+  const top = SAFE_TOP + 92;
   return {
     x: 14 + (i % 2) * (cw + gap),
-    y: top + Math.floor(i / 2) * (ch + 10),
+    y: top + Math.floor(i / 2) * (ch + gap),
     w: cw,
     h: ch,
   };
@@ -958,6 +971,24 @@ function galleryCard(i) {
 
 function drawGallery() {
   drawScreenHeader('集市');
+  const filters = [
+    ['latest', '最新'],
+    ['collected', '我的收藏'],
+  ];
+  for (let i = 0; i < filters.length; i++) {
+    const f = filters[i];
+    const x = 16 + i * 76;
+    roundRect(x, SAFE_TOP + 48, 70, 26, 8);
+    ctx.fillStyle = galleryFilter === f[0] ? CORAL : 'rgba(255,255,255,0.65)';
+    ctx.fill();
+    ctx.strokeStyle = galleryFilter === f[0] ? CORAL : 'rgba(53,41,27,0.12)';
+    ctx.stroke();
+    ctx.fillStyle = galleryFilter === f[0] ? '#fff' : MUTED;
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(f[1], x + 35, SAFE_TOP + 65);
+    ctx.textAlign = 'left';
+  }
   if (worksLoading && !works.length) {
     ctx.fillStyle = MUTED;
     ctx.font = '12px sans-serif';
@@ -970,7 +1001,7 @@ function drawGallery() {
     ctx.fillStyle = MUTED;
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('集市还没有作品', W / 2, H * 0.45);
+    ctx.fillText(galleryFilter === 'collected' ? '还没有收藏作品' : '集市还没有作品', W / 2, H * 0.45);
     ctx.textAlign = 'left';
     return;
   }
@@ -1994,6 +2025,22 @@ function handleGallery(x, y) {
     draw();
     return;
   }
+  if (y >= SAFE_TOP + 48 && y <= SAFE_TOP + 74) {
+    if (x >= 16 && x <= 86) {
+      if (galleryFilter !== 'latest') {
+        galleryFilter = 'latest';
+        loadGallery();
+      }
+      return;
+    }
+    if (x >= 92 && x <= 162) {
+      if (galleryFilter !== 'collected') {
+        galleryFilter = 'collected';
+        loadGallery();
+      }
+      return;
+    }
+  }
   const list = works.slice(galleryPage * 8, galleryPage * 8 + 8);
   for (let i = 0; i < list.length; i++) {
     const r = galleryCard(i);
@@ -2021,7 +2068,8 @@ function handleDetail(x, y) {
     screen = 'gallery';
     detail = null;
     comments = [];
-    draw();
+    if (galleryFilter === 'collected') loadGallery();
+    else draw();
     return;
   }
   if (!detail) return;
@@ -2043,9 +2091,9 @@ function handleOverlay(x, y) {
   if (overlay === 'menu') {
     const x0 = W / 2 - 140;
     const y0 = SAFE_TOP + 120;
-    for (let i = 0; i < 5; i++) {
-      const iy = y0 + 78 + i * 52;
-      if (x >= x0 + 16 && x <= x0 + 264 && y >= iy && y <= iy + 42) {
+    for (let i = 0; i < 6; i++) {
+      const iy = y0 + 78 + i * 50;
+      if (x >= x0 + 16 && x <= x0 + 264 && y >= iy && y <= iy + 40) {
         if (i === 0) overlay = 'inventory';
         else if (i === 1) {
           rowMode = true;
@@ -2064,12 +2112,15 @@ function handleOverlay(x, y) {
         } else if (i === 3) {
           overlay = null;
           exportA4();
+        } else if (i === 4) {
+          overlay = null;
+          shareGame();
         } else overlay = null;
         draw();
         return;
       }
     }
-    if (y < y0 || y > y0 + 354) overlay = null;
+    if (y < y0 || y > y0 + 408) overlay = null;
     draw();
     return;
   }
