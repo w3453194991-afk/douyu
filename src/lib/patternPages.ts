@@ -1,6 +1,7 @@
 import type { Bead, Project } from '../types';
 import { buildPatternSheet, type PatternSheetData } from './patternSheet';
 import { colorStats, projectBeads, projectMetrics, BOARD_SIZE, cmText, formatMinutes } from './metrics';
+import { drawColorLegend } from './legend';
 
 const W = 2200;
 const H = 1556;
@@ -183,23 +184,7 @@ function renderBoardPage(
   ctx.font = '500 16px "PingFang SC","Microsoft YaHei",sans-serif';
   ctx.fillText(`${seg.beads.length} 颗 · 全图 ${fullMetrics.beads} 颗`, legendX, legendY + 24);
 
-  const rowH = Math.min(34, 850 / Math.max(1, stats.length));
-  stats.forEach((c, i) => {
-    const y = legendY + 54 + i * rowH;
-    ctx.fillStyle = c.hex;
-    roundRect(ctx, legendX, y - 2, 24, 24, 6);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(43,33,23,0.18)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.fillStyle = INK;
-    ctx.font = '600 16px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText(`${c.code} ${c.name}`, legendX + 34, y + 16);
-    ctx.fillStyle = MUTED;
-    ctx.textAlign = 'right';
-    ctx.fillText(String(c.count), legendX + 590, y + 16);
-    ctx.textAlign = 'left';
-  });
+  drawColorLegend(ctx, stats, { x: legendX, y: legendY + 54, w: 610, h: 920 });
 
   // 步骤 / 对位提示
   ctx.fillStyle = '#F4EADB';

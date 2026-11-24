@@ -1,5 +1,6 @@
 import type { Project } from '../types';
 import { projectBeads, projectMetrics, BOARD_SIZE, cmText, formatMinutes, type ProjectMetrics } from './metrics';
+import { drawColorLegend } from './legend';
 
 export type PatternSheetData = {
   dataUrl: string;
@@ -263,29 +264,11 @@ export function buildPatternSheet(
   ctx.fillText(`${metrics.colors} 种颜色 · ${metrics.beads} 颗`, legendX, legendY + 24);
 
   const list = metrics.colorStats;
-  const listTop = legendY + 52;
-  const rowH = list.length ? Math.min(34, 900 / list.length) : 30;
-  for (let i = 0; i < list.length; i++) {
-    const c = list[i];
-    const y = listTop + i * rowH;
-    ctx.fillStyle = c.hex;
-    roundRect(ctx, legendX, y - 2, 24, 24, 6);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(43,33,23,0.18)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.fillStyle = INK;
-    ctx.font = `${rowH < 24 ? 500 : 600} 16px "PingFang SC","Microsoft YaHei",sans-serif`;
-    ctx.fillText(`${c.code} ${c.name}`, legendX + 34, y + 16);
-    ctx.fillStyle = MUTED;
-    ctx.font = '600 15px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${c.count}`, legendX + 610, y + 16);
-    ctx.textAlign = 'left';
-  }
+  const legendBox = { x: legendX, y: 280, w: 626, h: 900 };
+  const legendH = drawColorLegend(ctx, list, legendBox);
 
   // 建议
-  const adviceY = Math.min(1260, listTop + list.length * rowH + 20);
+  const adviceY = Math.min(1200, legendBox.y + legendH + 16);
   ctx.fillStyle = '#F4EADB';
   roundRect(ctx, legendX, adviceY, 610, 54, 10);
   ctx.fill();
