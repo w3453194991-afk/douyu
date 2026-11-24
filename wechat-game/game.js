@@ -494,6 +494,36 @@ function undoPiece() {
   draw();
 }
 
+function pieceWorldKeys(p, ox = p.ox, oz = p.oz, rot = p.rot) {
+  const a = (rot * Math.PI) / 2;
+  const ca = Math.cos(a);
+  const sa = Math.sin(a);
+  const keys = [];
+  for (const cell of p.cells) {
+    const dx = cell.x + 0.5 - p.cx;
+    const dz = cell.y + 0.5 - p.cz;
+    const wx = p.cx + ox + dx * ca - dz * sa;
+    const wz = p.cz + oz + dx * sa + dz * ca;
+    keys.push(`${Math.round(wx * 2)},${Math.round(wz * 2)}`);
+  }
+  return keys;
+}
+
+function collidesPiece(index) {
+  const p = pieces3d[index];
+  if (!p) return false;
+  const mine = new Set(pieceWorldKeys(p));
+  for (let i = 0; i < pieces3d.length; i++) {
+    if (i === index) continue;
+    const other = pieces3d[i];
+    if (Math.abs((other.lift || 0) - (p.lift || 0)) > 0.55) continue;
+    for (const key of pieceWorldKeys(other)) {
+      if (mine.has(key)) return true;
+    }
+  }
+  return false;
+}
+
 function pieceAt(x, y) {
   let best = -1;
   let bestD = 42 * 42;
@@ -2238,7 +2268,12 @@ if (wx.onTouchEnd) {
       const p = pieces3d[dragPiece];
       p.ox = Math.round(p.ox * 2) / 2;
       p.oz = Math.round(p.oz * 2) / 2;
-      draw();
+      if (collidesPiece(dragPiece)) {
+        toast('这块和别的零件重叠了，已回弹');
+        undoPiece();
+      } else {
+        draw();
+      }
     }
     dragX = null;
     dragY = null;
