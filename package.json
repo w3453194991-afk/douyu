@@ -1,0 +1,37 @@
+{
+  "name": "douyu-bead-studio",
+  "private": true,
+  "version": "1.0.0",
+  "description": "豆屿 BEAD ISLE · 无限拼豆、熨烫成件、立体拼装与作品集市的拼豆创作工具",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "dev": "vite",
+    "dev:api": "node --disable-warning=ExperimentalWarning server/index.mjs",
+    "build": "tsc --noEmit && vite build",
+    "start": "node --disable-warning=ExperimentalWarning server/index.mjs",
+    "reseed": "node --disable-warning=ExperimentalWarning server/reseed.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource/baloo-2": "^5.2.0",
+    "@fontsource/zcool-kuaile": "^5.2.0",
+    "@imgly/background-removal": "^1.7.0",
+    "express": "^5.1.0",
+    "pdfjs-dist": "^4.10.38",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "three": "^0.187.0",
+    "zustand": "^5.0.5"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/three": "^0.187.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.0.0"
+  }
+}

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.tmp/
+data/douyu.db
+data/douyu.db-shm
+data/douyu.db-wal
+data/covers/
+.env
+.env.*
+!.env.example
+*.local
+*.tsbuildinfo
+coverage/
+*.log
+.DS_Store
