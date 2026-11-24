@@ -90,6 +90,11 @@ let glProgram = null;
 let glBuffer = null;
 let glLoc = null;
 let glFailed = false;
+let pieces3d = [];
+let selectedPiece = 0;
+let dragPiece = -1;
+let dragCamera = false;
+let pieceScreens = [];
 let overlay = null; // 'menu' | 'inventory'
 let rowMode = false;
 let rowFocus = 0;
@@ -409,6 +414,74 @@ function countBeads() {
     }
   }
   return { n, f };
+}
+
+function buildPieces3d() {
+  const seen = Array.from({ length: N }, () => Array(N).fill(false));
+  const next = [];
+  for (let sy = 0; sy < N; sy++) {
+    for (let sx = 0; sx < N; sx++) {
+      if (board[sy][sx] < 0 || seen[sy][sx]) continue;
+      const cells = [];
+      const q = [[sx, sy]];
+      seen[sy][sx] = true;
+      while (q.length) {
+        const [x, y] = q.pop();
+        cells.push({ x, y, c: board[y][x] });
+        const around = [
+          [x + 1, y],
+          [x - 1, y],
+          [x, y + 1],
+          [x, y - 1],
+        ];
+        for (const [nx, ny] of around) {
+          if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+          if (seen[ny][nx] || board[ny][nx] < 0) continue;
+          seen[ny][nx] = true;
+          q.push([nx, ny]);
+        }
+      }
+      let cx = 0;
+      let cz = 0;
+      for (const c of cells) {
+        cx += c.x + 0.5;
+        cz += c.y + 0.5;
+      }
+      cx /= cells.length;
+      cz /= cells.length;
+      next.push({ cells, cx, cz, ox: 0, oz: 0, lift: 0, rot: 0 });
+    }
+  }
+  pieces3d = next;
+  selectedPiece = next.length ? 0 : -1;
+  dragPiece = -1;
+}
+
+function toggle3DView() {
+  view3d = !view3d;
+  overlay = null;
+  rowMode = false;
+  dragX = null;
+  dragY = null;
+  dragPiece = -1;
+  dragCamera = false;
+  if (view3d) buildPieces3d();
+  draw();
+}
+
+function pieceAt(x, y) {
+  let best = -1;
+  let bestD = 42 * 42;
+  for (let i = 0; i < pieceScreens.length; i++) {
+    const p = pieceScreens[i];
+    if (!p) continue;
+    const d = (x - p.x) ** 2 + (y - p.y) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
+  }
+  return best;
 }
 
 function nearestColorIndex(hex) {
@@ -1036,7 +1109,27 @@ function drawDetail() {
   }
 }
 function drawToolbar() {
-  const tools = ['撤销', '橡皮', '熨烫', '图纸', view3d ? '返回' : '3D', '清空'];
+  if (view3d) {
+    const labels = ['下一个', '旋转', '抬起', '放下', '重置', '返回'];
+    for (let i = 0; i < labels.length; i++) {
+      const x = 18 + i * toolbarItem;
+      const w = toolbarItem - 5;
+      const active = i === 5;
+      roundRect(x, toolbarY, w, toolbarH, 10);
+      ctx.fillStyle = active ? CORAL : 'rgba(255,255,255,0.72)';
+      ctx.fill();
+      ctx.strokeStyle = active ? CORAL : 'rgba(53,41,27,0.15)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = active ? '#fff' : INK;
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(labels[i], x + w / 2, toolbarY + 27);
+      ctx.textAlign = 'left';
+    }
+    return;
+  }
+  const tools = ['撤销', '橡皮', '熨烫', '图纸', '3D', '清空'];
   for (let i = 0; i < tools.length; i++) {
     const x = 18 + i * toolbarItem;
     const w = toolbarItem - 5;
@@ -1060,8 +1153,11 @@ function drawFooter() {
   ctx.fillStyle = 'rgba(43,33,23,0.42)';
   ctx.font = '9px sans-serif';
   let text = '29 × 29 标准拼板 · 5mm 中豆 · 豆屿 BEAD ISLE';
-  if (view3d) text = gl ? 'WebGL 3D 预览 · 拖动旋转' : 'Canvas 2.5D 预览 · 完整 3D 待接 WebGL';
-  else if (rowMode) {
+  if (view3d) {
+    text = gl
+      ? `WebGL 3D 拼装 · ${pieces3d.length} 块零件 · 拖动选中的零件`
+      : 'Canvas 2.5D 预览 · 完整 3D 待接 WebGL';
+  } else if (rowMode) {
     let n = 0;
     for (let x = 0; x < N; x++) if (board[rowFocus][x] >= 0) n++;
     text = `按行跟做 · 第 ${rowFocus + 1} 行 · 本行 ${n} 颗`;
@@ -1225,62 +1321,95 @@ function pushBox(out, cx, cy, cz, sx, sy, sz, color) {
   pushFace(out, [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, -1, 0], color);
 }
 
+function projectPoint(mvp, x, y, z) {
+  const cx = mvp[0] * x + mvp[4] * y + mvp[8] * z + mvp[12];
+  const cy = mvp[1] * x + mvp[5] * y + mvp[9] * z + mvp[13];
+  const cw = mvp[3] * x + mvp[7] * y + mvp[11] * z + mvp[15];
+  if (cw <= 0) return null;
+  return {
+    x: (cx / cw * 0.5 + 0.5) * W,
+    y: (1 - (cy / cw * 0.5 + 0.5)) * H,
+  };
+}
+
 function renderWebGL() {
   if (!initWebGL()) return false;
+  if (!pieces3d.length) buildPieces3d();
   const verts = [];
   let minX = Infinity;
   let minY = Infinity;
+  let minZ = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      if (board[y][x] < 0) continue;
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x);
-      maxY = Math.max(maxY, y);
-    }
-  }
-  if (!Number.isFinite(minX)) {
-    minX = 0;
-    minY = 0;
-    maxX = N - 1;
-    maxY = N - 1;
-  }
-  const w = maxX - minX + 1;
-  const d = maxY - minY + 1;
-  const cx = (minX + maxX + 1) / 2;
-  const cz = (minY + maxY + 1) / 2;
-  const baseSize = Math.max(w, d) + 3;
-  pushBox(
-    verts,
-    cx,
-    -0.18,
-    cz,
-    baseSize,
-    0.32,
-    baseSize,
-    hexRgb('#252832'),
-  );
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      if (board[y][x] < 0) continue;
-      const h = fused[y][x] ? 0.52 : 0.72;
+  let maxZ = -Infinity;
+  // 取景用原拼板范围，不跟着拖动/抬起变化，否则单零件拖动会被相机“追着”居中。
+  let viewMinX = Infinity;
+  let viewMinZ = Infinity;
+  let viewMaxX = -Infinity;
+  let viewMaxZ = -Infinity;
+  const centers = [];
+
+  for (let pi = 0; pi < pieces3d.length; pi++) {
+    const p = pieces3d[pi];
+    const a = (p.rot * Math.PI) / 2;
+    const ca = Math.cos(a);
+    const sa = Math.sin(a);
+    for (const cell of p.cells) {
+      const dx = cell.x + 0.5 - p.cx;
+      const dz = cell.y + 0.5 - p.cz;
+      const wx = p.cx + p.ox + dx * ca - dz * sa;
+      const wz = p.cz + p.oz + dx * sa + dz * ca;
+      const wy = p.lift;
+      const h = fused[cell.y][cell.x] ? 0.52 : 0.72;
+      pushBox(verts, wx, wy + 0.07, wz, 0.94, 0.14, 0.94, hexRgb('#252832'));
       pushBox(
         verts,
-        x + 0.5,
-        h / 2,
-        y + 0.5,
+        wx,
+        wy + h / 2,
+        wz,
         0.82,
         h,
         0.82,
-        hexRgb(COLORS[board[y][x]].hex),
+        hexRgb(COLORS[cell.c].hex),
       );
+      minX = Math.min(minX, wx - 0.5);
+      maxX = Math.max(maxX, wx + 0.5);
+      minY = Math.min(minY, wy);
+      maxY = Math.max(maxY, wy + h);
+      minZ = Math.min(minZ, wz - 0.5);
+      maxZ = Math.max(maxZ, wz + 0.5);
+      viewMinX = Math.min(viewMinX, cell.x + 0.5);
+      viewMaxX = Math.max(viewMaxX, cell.x + 0.5);
+      viewMinZ = Math.min(viewMinZ, cell.y + 0.5);
+      viewMaxZ = Math.max(viewMaxZ, cell.y + 0.5);
     }
+    centers.push({ x: p.cx + p.ox, y: p.lift + 0.4, z: p.cz + p.oz });
   }
 
-  const target = [cx, 0.3, cz];
-  const radius = Math.max(20, baseSize * 2.8 + 6);
+  const has = Number.isFinite(minX);
+  if (!has) {
+    minX = 0;
+    maxX = N;
+    minY = 0;
+    maxY = 1;
+    minZ = 0;
+    maxZ = N;
+    centers.length = 0;
+  }
+  const cx = has ? (viewMinX + viewMaxX) / 2 : (minX + maxX) / 2;
+  const cz = has ? (viewMinZ + viewMaxZ) / 2 : (minZ + maxZ) / 2;
+  const cy = 0.5;
+  const size = Math.max(
+    has ? viewMaxX - viewMinX : maxX - minX,
+    1,
+    has ? viewMaxZ - viewMinZ : maxZ - minZ,
+  );
+  const target = [cx, cy, cz];
+  const radius = Math.max(20, size * 2.8 + 7);
+  if (has) {
+    // 固定地面板：零件抬起/拖动时能看出高度和位移。
+    pushBox(verts, cx, -0.22, cz, size + 3, 0.24, size + 3, hexRgb('#252832'));
+  }
   const eye = [
     target[0] + Math.cos(pitch) * Math.sin(angle) * radius,
     target[1] + Math.sin(pitch) * radius,
@@ -1289,6 +1418,7 @@ function renderWebGL() {
   const view = mat4LookAt(eye, target, [0, 1, 0]);
   const proj = mat4Perspective(Math.PI / 4, W / H, 0.1, 200);
   const mvp = mat4Multiply(proj, view);
+  pieceScreens = centers.map((c) => projectPoint(mvp, c.x, c.y, c.z));
 
   gl.viewport(0, 0, glCanvas.width, glCanvas.height);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -1315,10 +1445,23 @@ function draw3DScene() {
     ctx.clip();
     ctx.drawImage(glCanvas, 0, 0, W, H);
     ctx.restore();
+    if (selectedPiece >= 0 && pieceScreens[selectedPiece]) {
+      const p = pieceScreens[selectedPiece];
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 24, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(224,88,47,0.95)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = CORAL;
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`零件 ${selectedPiece + 1}/${pieces3d.length}`, p.x, p.y - 30);
+      ctx.textAlign = 'left';
+    }
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(43,33,23,0.55)';
     ctx.font = '10px sans-serif';
-    ctx.fillText('上下左右拖动，转一转', W / 2, toolbarY - 38);
+    ctx.fillText('拖动零件 · 空白处拖动旋转', W / 2, toolbarY - 38);
     ctx.textAlign = 'left';
     return;
   }
@@ -1778,6 +1921,31 @@ function handle(x, y) {
 
   // toolbar
   if (y >= toolbarY && y <= toolbarY + toolbarH) {
+    if (view3d) {
+      const i = Math.floor((x - 18) / toolbarItem);
+      if (i === 0) {
+        if (pieces3d.length) selectedPiece = (selectedPiece + 1) % pieces3d.length;
+      } else if (i === 1) {
+        if (selectedPiece >= 0 && pieces3d[selectedPiece]) pieces3d[selectedPiece].rot = (pieces3d[selectedPiece].rot + 1) % 4;
+      } else if (i === 2) {
+        if (selectedPiece >= 0 && pieces3d[selectedPiece]) pieces3d[selectedPiece].lift = Math.min(6, pieces3d[selectedPiece].lift + 0.7);
+      } else if (i === 3) {
+        if (selectedPiece >= 0 && pieces3d[selectedPiece]) pieces3d[selectedPiece].lift = Math.max(0, pieces3d[selectedPiece].lift - 0.7);
+      } else if (i === 4) {
+        for (const p of pieces3d) {
+          p.ox = 0;
+          p.oz = 0;
+          p.lift = 0;
+          p.rot = 0;
+        }
+        selectedPiece = pieces3d.length ? 0 : -1;
+      } else if (i === 5) {
+        toggle3DView();
+        return;
+      }
+      draw();
+      return;
+    }
     if (rowMode) {
       const item = (W - 36) / 3;
       const ri = Math.floor((x - 18) / item);
@@ -1808,8 +1976,8 @@ function handle(x, y) {
     } else if (i === 3) {
       choosePhotoPattern();
     } else if (i === 4) {
-      view3d = !view3d;
-      dragX = null;
+      toggle3DView();
+      return;
     } else if (i === 5) {
       snap();
       board = emptyBoard();
@@ -1941,19 +2109,37 @@ wx.onTouchStart((e) => {
   const t = e.touches && e.touches[0];
   if (!t) return;
   if (view3d && !overlay && t.clientY < toolbarY - 6) {
-    dragX = t.clientX;
-    dragY = t.clientY;
+    const hit = pieceAt(t.clientX, t.clientY);
+    if (hit >= 0) {
+      selectedPiece = hit;
+      dragPiece = hit;
+      dragCamera = false;
+      dragX = t.clientX;
+      dragY = t.clientY;
+    } else {
+      dragPiece = -1;
+      dragCamera = true;
+      dragX = t.clientX;
+      dragY = t.clientY;
+    }
   }
   handle(t.clientX, t.clientY);
 });
 
 if (wx.onTouchMove) {
   wx.onTouchMove((e) => {
-    if (!view3d || overlay || dragX == null) return;
+    if (!view3d || overlay) return;
     const t = e.touches && e.touches[0];
-    if (!t) return;
-    angle += (t.clientX - dragX) * 0.012;
-    pitch = Math.max(0.18, Math.min(1.25, pitch + (t.clientY - dragY) * 0.008));
+    if (!t || dragX == null) return;
+    if (dragPiece >= 0 && pieces3d[dragPiece]) {
+      const dx = t.clientX - dragX;
+      const dy = t.clientY - dragY;
+      pieces3d[dragPiece].ox += dx * 0.055;
+      pieces3d[dragPiece].oz += dy * 0.055;
+    } else if (dragCamera) {
+      angle += (t.clientX - dragX) * 0.012;
+      pitch = Math.max(0.18, Math.min(1.25, pitch + (t.clientY - dragY) * 0.008));
+    }
     dragX = t.clientX;
     dragY = t.clientY;
     draw();
@@ -1964,6 +2150,8 @@ if (wx.onTouchEnd) {
   wx.onTouchEnd(() => {
     dragX = null;
     dragY = null;
+    dragPiece = -1;
+    dragCamera = false;
   });
 }
 
@@ -1973,8 +2161,7 @@ if (typeof GameGlobal !== 'undefined') {
     board: () => board,
     handle,
     toggle3D: () => {
-      view3d = !view3d;
-      draw();
+      toggle3DView();
     },
     sheet: () => buildSheetCanvas(),
   };
