@@ -72,13 +72,16 @@ const paletteY = boardY + boardSize + 34;
 const paletteItem = (W - 32) / COLORS.length;
 const toolbarY = H - 80;
 const toolbarH = 44;
-const toolbarItem = (W - 36) / 5;
+const toolbarItem = (W - 36) / 6;
 
 let board = starterBoard();
 let fused = Array.from({ length: N }, () => Array(N).fill(false));
 let selected = 0;
 let eraser = false;
 let history = [];
+let view3d = false;
+let angle = -0.38;
+let dragX = null;
 
 function save() {
   try {
@@ -172,10 +175,10 @@ function draw() {
   ctx.fill();
   ctx.fillStyle = INK;
   ctx.font = 'bold 23px sans-serif';
-  ctx.fillText('豆屿', 40, SAFE_TOP + 26);
+  ctx.fillText(view3d ? '豆屿 · 立体' : '豆屿', 40, SAFE_TOP + 26);
   ctx.fillStyle = MUTED;
   ctx.font = '11px sans-serif';
-  ctx.fillText('拼豆小岛 · 小游戏版', 40, SAFE_TOP + 43);
+  ctx.fillText(view3d ? '2.5D 预览 · 左右拖动旋转' : '拼豆小岛 · 小游戏版', 40, SAFE_TOP + 43);
 
   const stat = countBeads();
   ctx.textAlign = 'right';
@@ -186,6 +189,26 @@ function draw() {
   ctx.font = '10px sans-serif';
   ctx.fillText(stat.f ? `已熨 ${stat.f}` : '点格子放豆', W - 16, SAFE_TOP + 39);
   ctx.textAlign = 'left';
+
+  // save current canvas to album
+  roundRect(W - 70, SAFE_TOP + 46, 54, 22, 8);
+  ctx.fillStyle = 'rgba(255,255,255,0.78)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.15)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('保存', W - 43, SAFE_TOP + 61);
+  ctx.textAlign = 'left';
+
+  if (view3d) {
+    draw3DScene();
+    drawToolbar();
+    drawFooter();
+    return;
+  }
 
   // board
   roundRect(boardX, boardY, boardSize, boardSize, 12);
@@ -261,12 +284,17 @@ function draw() {
   }
 
   // toolbar
-  const tools = ['撤销', '橡皮', '熨烫', '图纸', '清空'];
+  drawToolbar();
+  drawFooter();
+}
+
+function drawToolbar() {
+  const tools = ['撤销', '橡皮', '熨烫', '图纸', view3d ? '返回' : '3D', '清空'];
   for (let i = 0; i < tools.length; i++) {
     const x = 18 + i * toolbarItem;
-    const w = toolbarItem - 6;
-    const active = i === 1 && eraser;
-    roundRect(x, toolbarY, w, toolbarH, 11);
+    const w = toolbarItem - 5;
+    const active = (i === 1 && eraser) || (i === 4 && view3d);
+    roundRect(x, toolbarY, w, toolbarH, 10);
     ctx.fillStyle = active ? CORAL : 'rgba(255,255,255,0.72)';
     ctx.fill();
     ctx.strokeStyle = active ? CORAL : 'rgba(53,41,27,0.15)';
@@ -274,17 +302,143 @@ function draw() {
     ctx.stroke();
     ctx.textAlign = 'center';
     ctx.fillStyle = active ? '#fff' : INK;
-    ctx.font = 'bold 12px sans-serif';
+    ctx.font = 'bold 11px sans-serif';
     ctx.fillText(tools[i], x + w / 2, toolbarY + 27);
     ctx.textAlign = 'left';
   }
+}
 
-  // footer hint
+function drawFooter() {
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(43,33,23,0.42)';
   ctx.font = '9px sans-serif';
-  ctx.fillText('29 × 29 标准拼板 · 5mm 中豆 · 豆屿 BEAD ISLE', W / 2, toolbarY - 12);
+  ctx.fillText(
+    view3d ? 'Canvas 2.5D 预览 · 完整 3D 待接 WebGL' : '29 × 29 标准拼板 · 5mm 中豆 · 豆屿 BEAD ISLE',
+    W / 2,
+    toolbarY - 12,
+  );
   ctx.textAlign = 'left';
+}
+
+function draw3DScene() {
+  const stat = countBeads();
+  if (!stat.n) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = MUTED;
+    ctx.font = '13px sans-serif';
+    ctx.fillText('先回拼板放几颗豆，再来看立体', W / 2, H * 0.48);
+    ctx.textAlign = 'left';
+    return;
+  }
+
+  const scale = Math.min((W - 40) / (N * 1.38), (H * 0.46) / (N * 0.58));
+  const cx = W / 2;
+  const cy = boardY + boardSize * 0.47;
+  const center = (N - 1) / 2;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const project = (x, y) => {
+    const u = x - center;
+    const v = y - center;
+    const X = u * cos - v * sin;
+    const Z = u * sin + v * cos;
+    return { x: cx + X * scale, y: cy + Z * scale * 0.55, z: Z };
+  };
+
+  // base plate
+  const corners = [
+    [-0.6, -0.6],
+    [N - 0.4, -0.6],
+    [N - 0.4, N - 0.4],
+    [-0.6, N - 0.4],
+  ].map(([x, y]) => project(x, y));
+  ctx.beginPath();
+  ctx.moveTo(corners[0].x, corners[0].y);
+  for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].x, corners[i].y);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(27,29,35,0.88)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.13)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // beads, back to front
+  const items = [];
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      if (board[y][x] < 0) continue;
+      const p = project(x, y);
+      items.push({ ...p, color: COLORS[board[y][x]].hex, fused: fused[y][x] });
+    }
+  }
+  items.sort((a, b) => a.z - b.z);
+
+  const h = scale * (stat.f ? 0.7 : 0.9);
+  const r = scale * 0.42;
+  for (const it of items) {
+    ctx.beginPath();
+    ctx.moveTo(it.x - r, it.y - h);
+    ctx.lineTo(it.x + r, it.y - h);
+    ctx.lineTo(it.x + r, it.y);
+    ctx.lineTo(it.x - r, it.y);
+    ctx.closePath();
+    ctx.fillStyle = it.color;
+    ctx.globalAlpha = 0.72;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.ellipse(it.x, it.y - h, r, r * 0.55, 0, 0, Math.PI * 2);
+    ctx.fillStyle = it.color;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.ellipse(it.x, it.y - h, r * 0.34, r * 0.19, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#1B1D23';
+    ctx.fill();
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(43,33,23,0.55)';
+  ctx.font = '10px sans-serif';
+  ctx.fillText('左右拖动，转一转', W / 2, toolbarY - 38);
+  ctx.textAlign = 'left';
+}
+
+function saveImage() {
+  if (!wx.canvasToTempFilePath) {
+    wx.showToast({ title: '当前环境不支持保存', icon: 'none' });
+    return;
+  }
+  if (wx.showLoading) wx.showLoading({ title: '正在保存…' });
+  wx.canvasToTempFilePath({
+    canvas,
+    success(res) {
+      if (wx.hideLoading) wx.hideLoading();
+      wx.saveImageToPhotosAlbum({
+        filePath: res.tempFilePath,
+        success() {
+          wx.showToast({ title: '已保存到相册', icon: 'none' });
+        },
+        fail() {
+          wx.showModal({
+            title: '需要相册权限',
+            content: '请在设置里允许保存图片到相册。',
+            showCancel: false,
+          });
+        },
+      });
+    },
+    fail() {
+      if (wx.hideLoading) wx.hideLoading();
+      wx.showToast({ title: '保存失败', icon: 'none' });
+    },
+  });
 }
 
 function choosePhotoPattern() {
@@ -384,8 +538,21 @@ function loadPhotoPattern(path) {
   img.src = path;
 }
 
-function handle(x, y) {  // board
-  if (x >= boardX && x <= boardX + boardSize && y >= boardY && y <= boardY + boardSize) {
+function handle(x, y) {
+  // save button
+  if (x >= W - 74 && x <= W - 12 && y >= SAFE_TOP + 42 && y <= SAFE_TOP + 72) {
+    saveImage();
+    return;
+  }
+
+  // board
+  if (
+    !view3d &&
+    x >= boardX &&
+    x <= boardX + boardSize &&
+    y >= boardY &&
+    y <= boardY + boardSize
+  ) {
     const bx = Math.floor((x - boardX) / cell);
     const by = Math.floor((y - boardY) / cell);
     if (bx >= 0 && bx < N && by >= 0 && by < N) {
@@ -404,7 +571,7 @@ function handle(x, y) {  // board
   }
 
   // palette
-  if (y >= paletteY - 6 && y <= paletteY + 38) {
+  if (!view3d && y >= paletteY - 6 && y <= paletteY + 38) {
     for (let i = 0; i < COLORS.length; i++) {
       const cx = 16 + paletteItem * (i + 0.5);
       if (Math.abs(x - cx) <= 20) {
@@ -419,7 +586,7 @@ function handle(x, y) {  // board
   // toolbar
   if (y >= toolbarY && y <= toolbarY + toolbarH) {
     const i = Math.floor((x - 18) / toolbarItem);
-    if (i < 0 || i > 4) return;
+    if (i < 0 || i > 5) return;
     if (i === 0) {
       const prev = history.pop();
       if (prev) {
@@ -439,6 +606,9 @@ function handle(x, y) {  // board
     } else if (i === 3) {
       choosePhotoPattern();
     } else if (i === 4) {
+      view3d = !view3d;
+      dragX = null;
+    } else if (i === 5) {
       snap();
       board = emptyBoard();
       fused = Array.from({ length: N }, () => Array(N).fill(false));
@@ -453,10 +623,36 @@ draw();
 
 wx.onTouchStart((e) => {
   const t = e.touches && e.touches[0];
-  if (t) handle(t.clientX, t.clientY);
+  if (!t) return;
+  if (view3d && t.clientY < toolbarY - 6) dragX = t.clientX;
+  handle(t.clientX, t.clientY);
 });
+
+if (wx.onTouchMove) {
+  wx.onTouchMove((e) => {
+    if (!view3d || dragX == null) return;
+    const t = e.touches && e.touches[0];
+    if (!t) return;
+    angle += (t.clientX - dragX) * 0.012;
+    dragX = t.clientX;
+    draw();
+  });
+}
+
+if (wx.onTouchEnd) {
+  wx.onTouchEnd(() => {
+    dragX = null;
+  });
+}
 
 // 方便排查/自动化测试，不影响正常游戏
 if (typeof GameGlobal !== 'undefined') {
-  GameGlobal.__douyuGame = { board: () => board, handle };
+  GameGlobal.__douyuGame = {
+    board: () => board,
+    handle,
+    toggle3D: () => {
+      view3d = !view3d;
+      draw();
+    },
+  };
 }
