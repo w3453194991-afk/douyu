@@ -39,6 +39,17 @@
 
 > **说明**：这是一个可交互的 H5 竖屏原型，页面结构、胶囊、TabBar、底部 Sheet 都按微信小程序的使用习惯实现，现在浏览器里就能完整体验。要真正导出成微信小程序包，还需要把 React 页面落到 WXML / WXSS / JS，3D 部分再接微信 WebGL（例如 three-platformize，或先做 2.5D 渲染）；这一步可以继续做。
 
+### 在微信开发者工具里预览
+
+仓库里带了一个 `wechat-mini/` **WebView 壳**，可以导入微信开发者工具：
+
+1. 根目录运行 `npm start`
+2. 微信开发者工具 → 导入项目 → 选择 `wechat-mini/`
+3. 详情 → 本地设置 → 勾选「不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书」
+4. 模拟器会加载 `http://127.0.0.1:8787/#/mini`
+
+详细说明见 [wechat-mini/README.md](wechat-mini/README.md)。真机/正式版的 `web-view` 需要 HTTPS 业务域名，配置方法也写在那里。
+
 ## 这次补上的图纸与集市能力
 
 对照了颂拼豆、拼小豆、PindouAI、Perler 等拼豆工具和教程的常见做法，补上了从「有张图」到「真的能拼出来」之间最缺的几块：
@@ -222,8 +233,10 @@ douyu/
 │  │  ├─ pattern.ts        # 照片转豆图：采样、配色、限色、抖动、去背景
 │  │  ├─ pdf.ts            # PDF 页转图片（pdf.js）
 │  │  ├─ gridDetect.ts     # 从网格线猜行列数
+│  │  ├─ legend.ts         # 大色数色号清单自动分栏
 │  │  ├─ beadCode.ts       # 豆子编号 / 品牌近似编号
-│  │  ├─ patternSheet.ts   # A4 图纸画布、分板线、PNG/打印│  │  ├─ patternPages.ts   # 总览 + 每块 29×29 拼板一页
+│  │  ├─ patternSheet.ts   # A4 图纸画布、分板线、PNG/打印
+│  │  ├─ patternPages.ts   # 总览 + 每块 29×29 拼板一页
 │  │  ├─ metrics.ts        # 色号用量、5mm 尺寸、29×29 拼板数、时长
 │  │  ├─ inventory.ts      # 豆仓缺口、近似替代色
 │  │  ├─ render.ts         # 豆子、零件缩略图绘制
@@ -233,15 +246,17 @@ douyu/
 │  ├─ inventoryStore.ts    # 豆仓（localStorage）
 │  ├─ appStore.ts          # 用户、路由、Toast
 │  └─ styles.css           # 设计系统
+├─ wechat-mini/            # 微信开发者工具 WebView 壳（导入这个目录）
 ├─ shared/
 │  ├─ palette.mjs          # 豆屿 36 色色卡（前后端共用）
-│  └─ brands.mjs           # Hama 近似色号参考
+│  └─ brands.mjs           # Hama / Perler / Artkal 公开色号
 ├─ server/
 │  ├─ index.mjs            # Express API + 静态托管
 │  ├─ db.mjs               # node:sqlite、种子数据、封面写入
 │  ├─ pattern.mjs          # 种子作品的像素画 DSL
 │  └─ covers.mjs           # 3D 场景 → SVG 封面
 ├─ data/                   # douyu.db 与 covers/（运行后生成）
+├─ dist/                   # npm run build 产物
 └─ docs/screenshots/       # 本文截图
 ```
 

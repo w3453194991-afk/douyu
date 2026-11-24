@@ -1,0 +1,15 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "window": {
+    "navigationStyle": "custom",
+    "backgroundColor": "#FBF7EE",
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#FBF7EE",
+    "navigationBarTitleText": "豆屿",
+    "navigationBarTextStyle": "black"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
