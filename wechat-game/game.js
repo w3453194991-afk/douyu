@@ -288,7 +288,19 @@ function runAction(kind, id) {
       } else if (kind === 'unlock') {
         detail = data.work;
         if (me && typeof data.points === 'number') me.points = data.points;
-        toast('图纸已解锁');
+        const imported = importSceneToBoard(data.work.scene);
+        busyAction = '';
+        if (imported) {
+          screen = 'studio';
+          overlay = null;
+          rowMode = false;
+          view3d = false;
+          toast('图纸已铺到拼板，可以继续改');
+        } else {
+          toast('图纸已解锁');
+        }
+        draw();
+        return;
       }
       draw();
     })
@@ -389,6 +401,73 @@ function countBeads() {
     }
   }
   return { n, f };
+}
+
+function nearestColorIndex(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  if (!m) return 0;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  let best = 0;
+  let bestD = Infinity;
+  for (let i = 0; i < COLORS.length; i++) {
+    const q = parseInt(COLORS[i].hex.slice(1), 16);
+    const qr = (q >> 16) & 255;
+    const qg = (q >> 8) & 255;
+    const qb = q & 255;
+    const d = (r - qr) ** 2 * 2 + (g - qg) ** 2 * 4 + (b - qb) ** 2 * 3;
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
+  }
+  return best;
+}
+
+/** 解锁后的 scene 可能大于 29×29：整体缩到板内并居中。 */
+function importSceneToBoard(scene) {
+  if (!scene || !Array.isArray(scene.pieces)) return false;
+  const points = [];
+  for (const p of scene.pieces) {
+    const px = Array.isArray(p.pos) ? p.pos[0] : 0;
+    const py = Array.isArray(p.pos) ? p.pos[1] : 0;
+    for (const b of p.beads || []) {
+      if (Array.isArray(b) && b.length >= 3) {
+        points.push({ x: px + Number(b[0] || 0), y: py + Number(b[1] || 0), c: b[2] });
+      }
+    }
+  }
+  if (!points.length) return false;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of points) {
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+  const sw = maxX - minX + 1;
+  const sh = maxY - minY + 1;
+  const scale = Math.min(1, (N - 2) / Math.max(sw, sh));
+  const outW = Math.max(1, Math.ceil(sw * scale));
+  const outH = Math.max(1, Math.ceil(sh * scale));
+  const offX = Math.floor((N - outW) / 2);
+  const offY = Math.floor((N - outH) / 2);
+  const next = emptyBoard();
+  for (const p of points) {
+    const x = Math.min(outW - 1, Math.max(0, Math.floor((p.x - minX) * scale)));
+    const y = Math.min(outH - 1, Math.max(0, Math.floor((p.y - minY) * scale)));
+    next[offY + y][offX + x] = nearestColorIndex(p.c);
+  }
+  snap();
+  board = next;
+  fused = Array.from({ length: N }, () => Array(N).fill(false));
+  save();
+  return true;
 }
 
 function draw() {
