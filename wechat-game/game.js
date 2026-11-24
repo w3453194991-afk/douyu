@@ -95,6 +95,7 @@ let selectedPiece = 0;
 let dragPiece = -1;
 let dragCamera = false;
 let pieceScreens = [];
+let pieceHistory = [];
 let overlay = null; // 'menu' | 'inventory'
 let rowMode = false;
 let rowFocus = 0;
@@ -466,7 +467,30 @@ function toggle3DView() {
   dragY = null;
   dragPiece = -1;
   dragCamera = false;
+  pieceHistory = [];
   if (view3d) buildPieces3d();
+  draw();
+}
+
+function pushPieceHistory() {
+  pieceHistory.push({
+    selectedPiece,
+    pieces: pieces3d.map((p) => ({ ox: p.ox, oz: p.oz, lift: p.lift, rot: p.rot })),
+  });
+  if (pieceHistory.length > 30) pieceHistory.shift();
+}
+
+function undoPiece() {
+  const prev = pieceHistory.pop();
+  if (!prev) return;
+  selectedPiece = prev.selectedPiece;
+  prev.pieces.forEach((t, i) => {
+    if (!pieces3d[i]) return;
+    pieces3d[i].ox = t.ox;
+    pieces3d[i].oz = t.oz;
+    pieces3d[i].lift = t.lift;
+    pieces3d[i].rot = t.rot;
+  });
   draw();
 }
 
@@ -1141,7 +1165,7 @@ function drawDetail() {
 }
 function drawToolbar() {
   if (view3d) {
-    const labels = ['下一个', '旋转', '抬起', '放下', '重置', '返回'];
+    const labels = ['撤销', '旋转', '抬起', '放下', '重置', '返回'];
     for (let i = 0; i < labels.length; i++) {
       const x = 18 + i * toolbarItem;
       const w = toolbarItem - 5;
@@ -1492,8 +1516,7 @@ function draw3DScene() {
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(43,33,23,0.55)';
     ctx.font = '10px sans-serif';
-    ctx.fillText('拖动零件 · 空白处拖动旋转', W / 2, toolbarY - 38);
-    ctx.textAlign = 'left';
+    ctx.fillText('拖动零件 · 空白处拖动旋转', W / 2, toolbarY - 38);    ctx.textAlign = 'left';
     return;
   }
   drawFallback3D();
@@ -1955,14 +1978,25 @@ function handle(x, y) {
     if (view3d) {
       const i = Math.floor((x - 18) / toolbarItem);
       if (i === 0) {
-        if (pieces3d.length) selectedPiece = (selectedPiece + 1) % pieces3d.length;
+        undoPiece();
+        return;
       } else if (i === 1) {
-        if (selectedPiece >= 0 && pieces3d[selectedPiece]) pieces3d[selectedPiece].rot = (pieces3d[selectedPiece].rot + 1) % 4;
+        if (selectedPiece >= 0 && pieces3d[selectedPiece]) {
+          pushPieceHistory();
+          pieces3d[selectedPiece].rot = (pieces3d[selectedPiece].rot + 1) % 4;
+        }
       } else if (i === 2) {
-        if (selectedPiece >= 0 && pieces3d[selectedPiece]) pieces3d[selectedPiece].lift = Math.min(6, pieces3d[selectedPiece].lift + 0.7);
+        if (selectedPiece >= 0 && pieces3d[selectedPiece]) {
+          pushPieceHistory();
+          pieces3d[selectedPiece].lift = Math.min(6, pieces3d[selectedPiece].lift + 0.7);
+        }
       } else if (i === 3) {
-        if (selectedPiece >= 0 && pieces3d[selectedPiece]) pieces3d[selectedPiece].lift = Math.max(0, pieces3d[selectedPiece].lift - 0.7);
+        if (selectedPiece >= 0 && pieces3d[selectedPiece]) {
+          pushPieceHistory();
+          pieces3d[selectedPiece].lift = Math.max(0, pieces3d[selectedPiece].lift - 0.7);
+        }
       } else if (i === 4) {
+        pushPieceHistory();
         for (const p of pieces3d) {
           p.ox = 0;
           p.oz = 0;
@@ -2165,6 +2199,7 @@ wx.onTouchStart((e) => {
       selectedPiece = hit;
       dragPiece = hit;
       dragCamera = false;
+      pushPieceHistory();
       dragX = t.clientX;
       dragY = t.clientY;
     } else {
@@ -2199,6 +2234,12 @@ if (wx.onTouchMove) {
 
 if (wx.onTouchEnd) {
   wx.onTouchEnd(() => {
+    if (view3d && dragPiece >= 0 && pieces3d[dragPiece]) {
+      const p = pieces3d[dragPiece];
+      p.ox = Math.round(p.ox * 2) / 2;
+      p.oz = Math.round(p.oz * 2) / 2;
+      draw();
+    }
     dragX = null;
     dragY = null;
     dragPiece = -1;
