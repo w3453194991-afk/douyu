@@ -1,0 +1,39 @@
+{
+  "description": "豆屿 · 拼豆小岛 微信小游戏",
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true,
+    "coverView": true,
+    "nodeModules": false,
+    "autoAudits": false,
+    "uglifyFileName": false,
+    "checkInvalidKey": true,
+    "checkSiteMap": true,
+    "uploadWithSourceMap": true,
+    "compileHotReLoad": false,
+    "useMultiFrameRuntime": true,
+    "useApiHook": true,
+    "useApiHostProcess": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
+    "minifyWXSS": true,
+    "minifyWXML": true
+  },
+  "compileType": "game",
+  "libVersion": "3.4.10",
+  "appid": "touristappid",
+  "projectname": "douyu-game",
+  "isGameTourist": true,
+  "condition": {}
+}

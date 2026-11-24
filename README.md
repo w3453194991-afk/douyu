@@ -56,6 +56,18 @@
 >
 > 如果开发者工具报 `game.json: 未找到`，说明当前项目被当成「小游戏」编译了：重新导入为「小程序」，并使用小程序 AppID；不要新建 `game.json`。
 
+## 微信小游戏版
+
+如果 AppID 注册的是**小游戏**，不能用 `wechat-mini/` 的 `web-view` 小程序壳，需要用 `wechat-game/`：
+
+- `game.json` + `game.js`
+- Canvas 2D
+- 已实现：29×29 拼板、8 色、放豆/收豆、撤销、熨烫、清空、本地保存
+- 还没移植：照片/PDF 图纸、3D、集市、豆仓、按行跟做
+- 导入开发者工具时，目录选 `wechat-game/`，项目类型选**小游戏**，AppID 用**小游戏 AppID**
+
+完整说明见 [wechat-game/README.md](wechat-game/README.md)。
+
 ## 这次补上的图纸与集市能力
 
 对照了颂拼豆、拼小豆、PindouAI、Perler 等拼豆工具和教程的常见做法，补上了从「有张图」到「真的能拼出来」之间最缺的几块：
@@ -252,7 +264,8 @@ douyu/
 │  ├─ inventoryStore.ts    # 豆仓（localStorage）
 │  ├─ appStore.ts          # 用户、路由、Toast
 │  └─ styles.css           # 设计系统
-├─ wechat-mini/            # 微信开发者工具 WebView 壳（导入这个目录）
+├─ wechat-mini/            # 微信小程序 WebView 壳（小程序 AppID）
+├─ wechat-game/            # 微信小游戏 Canvas 核心版（小游戏 AppID）
 ├─ shared/
 │  ├─ palette.mjs          # 豆屿 36 色色卡（前后端共用）
 │  └─ brands.mjs           # Hama / Perler / Artkal 公开色号

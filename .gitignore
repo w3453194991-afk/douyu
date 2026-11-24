@@ -14,3 +14,4 @@ coverage/
 *.log
 .DS_Store
 wechat-mini/project.private.config.json
+wechat-game/project.private.config.json
