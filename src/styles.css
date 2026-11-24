@@ -6598,3 +6598,10 @@ kbd {
   font-size: 8px;
   color: var(--ink-3);
 }
+
+.pattern-brand-note {
+  margin-top: 3px !important;
+  font-size: 8px !important;
+  color: var(--ink-3) !important;
+  line-height: 1.55;
+}

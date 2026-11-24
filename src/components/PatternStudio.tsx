@@ -376,6 +376,9 @@ function PatternStudioBody({
           <span className="eyebrow">PHOTO / PDF TO BEADS</span>
           <h2>照片转图纸</h2>
           <p>选一张图或 PDF，自动配成豆屿色卡，再一颗一颗改。</p>
+          <p className="pattern-brand-note">
+            自动配豆固定用豆屿 P01–P36 色卡；Hama / Perler / Artkal 色号要在底部色卡搜索里手动换。
+          </p>
         </div>
         <div className="pattern-head-actions">
           {source && (
