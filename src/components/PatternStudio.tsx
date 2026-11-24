@@ -583,7 +583,7 @@ function PatternStudioBody({
                 ))}
               </div>
               <p className="pattern-hint">
-                自动配豆和导入后的豆子编号都会按这个品牌色卡走；选 Perler / Artkal 后不再只输出豆屿 P 号。
+                输出色卡一次只选一个品牌：豆屿 / Hama / Perler / Artkal。不同品牌的同号不一定是同一种豆，混在一起不好买。
               </p>
             </div>
 
@@ -687,11 +687,13 @@ function PatternStudioBody({
                     className={options.colorLimit === n ? 'on' : ''}
                     onClick={() => setOptions((o) => ({ ...o, colorLimit: n }))}
                   >
-                    {n === 0 ? '全部' : `${n} 色`}
+                    {n === 0 ? '本牌全部' : `${n} 色`}
                   </button>
                 ))}
               </div>
-              <p className="pattern-hint">色少更像像素画，色多更像照片；0 表示使用整个输出色卡。</p>
+              <p className="pattern-hint">
+                色少更像像素画，色多更像照片；「本牌全部」是当前输出色卡的全部颜色，不会把四个品牌混在一起。
+              </p>
             </div>
 
             <div className="pattern-control pattern-photo-only">
