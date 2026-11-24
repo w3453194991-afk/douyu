@@ -632,7 +632,7 @@ let stock = COLORS.map(() => 0);
 /* ------------------------------ mini game API ---------------------------- */
 // 开发者工具默认；真机请换成电脑局域网 IP 或 HTTPS 域名。
 const API_BASE = 'http://127.0.0.1:8787';
-let screen = 'studio'; // studio | gallery | detail
+let screen = 'home'; // home | studio | gallery | detail | profile
 let token = '';
 let me = null;
 let works = [];
@@ -1134,7 +1134,396 @@ function importSceneToBoard(scene) {
   return true;
 }
 
+let tabRects = [];
+let homeRects = {};
+let profileRects = {};
+
+function drawMiniBoard(x, y, w, h) {
+  roundRect(x, y, w, h, 10);
+  ctx.fillStyle = BOARD;
+  ctx.fill();
+  const cs = Math.min((w - 14) / N, (h - 14) / N);
+  const ox = x + (w - cs * N) / 2;
+  const oy = y + (h - cs * N) / 2;
+  let any = false;
+  for (let yy = 0; yy < N; yy++) {
+    for (let xx = 0; xx < N; xx++) {
+      const v = board[yy][xx];
+      if (v < 0) continue;
+      any = true;
+      ctx.beginPath();
+      ctx.arc(ox + (xx + 0.5) * cs, oy + (yy + 0.5) * cs, Math.max(1, cs * 0.35), 0, Math.PI * 2);
+      ctx.fillStyle = COLORS[v].hex;
+      ctx.fill();
+    }
+  }
+  if (!any) {
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.font = '8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('空板', x + w / 2, y + h / 2 + 3);
+    ctx.textAlign = 'left';
+  }
+}
+
+function drawTabIcon(index, cx, cy, color) {
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 1.6;
+  if (index === 0) {
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy);
+    ctx.lineTo(cx, cy - 7);
+    ctx.lineTo(cx + 8, cy);
+    ctx.stroke();
+    ctx.strokeRect(cx - 6, cy, 12, 8);
+  } else if (index === 1) {
+    ctx.strokeRect(cx - 8, cy - 7, 6, 6);
+    ctx.strokeRect(cx + 1, cy - 7, 6, 6);
+    ctx.strokeRect(cx - 8, cy + 1, 6, 6);
+    ctx.strokeRect(cx + 1, cy + 1, 6, 6);
+  } else if (index === 2) {
+    ctx.beginPath();
+    ctx.arc(cx - 4, cy - 3, 3.5, 0, Math.PI * 2);
+    ctx.arc(cx + 4, cy - 3, 3.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy + 3, 7, 0, Math.PI);
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.arc(cx, cy - 4, 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy + 8, 8, Math.PI, 0);
+    ctx.stroke();
+  }
+}
+
+function drawTabBar(active) {
+  tabRects = [];
+  const y = H - 58;
+  ctx.fillStyle = '#FFFDF8';
+  ctx.fillRect(0, y, W, 58);
+  ctx.strokeStyle = 'rgba(53,41,27,0.10)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, y + 0.5);
+  ctx.lineTo(W, y + 0.5);
+  ctx.stroke();
+  const labels = ['首页', '工位', '集市', '我的'];
+  for (let i = 0; i < 4; i++) {
+    const x = i * (W / 4);
+    const cx = x + W / 8;
+    const color = i === active ? CORAL : MUTED;
+    drawTabIcon(i, cx, y + 19, color);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = color;
+    ctx.font = i === active ? 'bold 9px sans-serif' : '9px sans-serif';
+    ctx.fillText(labels[i], cx, y + 45);
+    ctx.textAlign = 'left';
+    tabRects.push({ i, x, y, w: W / 4, h: 58 });
+  }
+}
+
+function switchTab(index) {
+  overlay = null;
+  view3d = false;
+  if (index === 0) {
+    screen = 'home';
+    draw();
+  } else if (index === 1) {
+    screen = 'studio';
+    draw();
+  } else if (index === 2) {
+    screen = 'gallery';
+    if (galleryFilter !== 'latest') galleryFilter = 'latest';
+    loadGallery();
+  } else {
+    screen = 'profile';
+    draw();
+  }
+}
+
+function handleTabBar(x, y) {
+  for (const t of tabRects) {
+    if (y >= t.y && x >= t.x && x <= t.x + t.w) {
+      switchTab(t.i);
+      return true;
+    }
+  }
+  return false;
+}
+
+function homeStartNew() {
+  snap();
+  board = emptyBoard();
+  fused = Array.from({ length: N }, () => Array(N).fill(false));
+  save();
+  screen = 'studio';
+  view3d = false;
+  draw();
+}
+
+function drawHome() {
+  tabRects = [];
+  homeRects = {};
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, W, H);
+  const stat = countBeads();
+  const name = String((me && me.name) || '岛民').split(' ')[0];
+
+  ctx.fillStyle = MUTED;
+  ctx.font = 'bold 8px sans-serif';
+  ctx.fillText('BEAD ISLE · 拼豆工作室', 16, SAFE_TOP + 15);
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 25px sans-serif';
+  ctx.fillText(`嗨，${name}`, 16, SAFE_TOP + 44);
+
+  roundRect(W - 96, SAFE_TOP + 12, 80, 28, 14);
+  ctx.fillStyle = '#FFFDF8';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.10)';
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(W - 79, SAFE_TOP + 26, 6, 0, Math.PI * 2);
+  ctx.fillStyle = '#F5C24F';
+  ctx.fill();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 10px sans-serif';
+  ctx.fillText(me ? String(me.points) : '—', W - 55, SAFE_TOP + 30);
+  ctx.textAlign = 'left';
+
+  const hx = 16;
+  const hy = SAFE_TOP + 62;
+  const hw = W - 32;
+  const hh = 218;
+  roundRect(hx, hy, hw, hh, 22);
+  ctx.fillStyle = '#2B2117';
+  ctx.fill();
+  ctx.fillStyle = 'rgba(247,239,226,0.55)';
+  ctx.font = 'bold 8px sans-serif';
+  ctx.fillText('无限拼豆 · 熨烫 · 立体拼装', hx + 20, hy + 25);
+  ctx.fillStyle = '#F7EFE2';
+  ctx.font = 'bold 26px sans-serif';
+  ctx.fillText('把一颗一颗豆，', hx + 20, hy + 62);
+  ctx.fillStyle = '#F5C24F';
+  ctx.fillText('熨成一座岛。', hx + 20, hy + 95);
+  ctx.fillStyle = 'rgba(247,239,226,0.65)';
+  ctx.font = '10px sans-serif';
+  ctx.fillText('逐颗放豆、熨成零件，再立成一个小世界。', hx + 20, hy + 124);
+  ctx.fillText('拍下成品挂上集市，让别的岛民解锁你的图纸。', hx + 20, hy + 141);
+
+  const b1 = { x: hx + 20, y: hy + hh - 58, w: 150, h: 38 };
+  const b2 = { x: hx + 182, y: hy + hh - 58, w: 140, h: 38 };
+  roundRect(b1.x, b1.y, b1.w, b1.h, 12);
+  ctx.fillStyle = CORAL;
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(stat.n ? '继续上次的工位' : '开始拼豆', b1.x + b1.w / 2, b1.y + 24);
+  ctx.textAlign = 'left';
+  roundRect(b2.x, b2.y, b2.w, b2.h, 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(247,239,226,0.25)';
+  ctx.stroke();
+  ctx.fillStyle = '#F7EFE2';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('逛集市', b2.x + b2.w / 2, b2.y + 24);
+  ctx.textAlign = 'left';
+  homeRects.start = b1;
+  homeRects.gallery = b2;
+
+  const wy = hy + hh + 14;
+  roundRect(16, wy, W - 32, 104, 16);
+  ctx.fillStyle = '#FFFDF8';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.08)';
+  ctx.stroke();
+  drawMiniBoard(28, wy + 12, 78, 80);
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 13px sans-serif';
+  ctx.fillText(stat.n ? '我的小岛' : '一块空板', 118, wy + 32);
+  ctx.fillStyle = MUTED;
+  ctx.font = '9px sans-serif';
+  ctx.fillText(
+    stat.n ? `${stat.n} 颗豆 · 29×29 拼板` : '29×29 · 532 色 · 等你放第一颗',
+    118,
+    wy + 50,
+  );
+  ctx.fillStyle = CORAL;
+  ctx.font = 'bold 9px sans-serif';
+  ctx.fillText(stat.n ? '继续拼 →' : '开始拼 →', 118, wy + 70);
+  homeRects.workbench = { x: 16, y: wy, w: W - 32, h: 104 };
+
+  const qy = wy + 118;
+  const qw = (W - 44) / 3;
+  const quick = [
+    ['新开一块', '清空重来'],
+    ['图纸转豆', '照片 / PDF'],
+    ['3D 立体', '零件拼装'],
+  ];
+  for (let i = 0; i < 3; i++) {
+    const qx = 16 + i * (qw + 6);
+    roundRect(qx, qy, qw, 62, 13);
+    ctx.fillStyle = '#FFFDF8';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(53,41,27,0.08)';
+    ctx.stroke();
+    ctx.fillStyle = i === 2 ? CORAL : INK;
+    ctx.font = 'bold 10px sans-serif';
+    ctx.fillText(quick[i][0], qx + 10, qy + 25);
+    ctx.fillStyle = MUTED;
+    ctx.font = '8px sans-serif';
+    ctx.fillText(quick[i][1], qx + 10, qy + 40);
+    homeRects[`quick${i}`] = { x: qx, y: qy, w: qw, h: 62 };
+  }
+
+  ctx.fillStyle = 'rgba(43,33,23,0.38)';
+  ctx.font = '9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('一颗一颗，熨成一座岛。', W / 2, H - 76);
+  ctx.textAlign = 'left';
+  drawTabBar(0);
+}
+
+function drawProfile() {
+  tabRects = [];
+  profileRects = {};
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 24px sans-serif';
+  ctx.fillText('我的', 16, SAFE_TOP + 40);
+  ctx.fillStyle = MUTED;
+  ctx.font = '9px sans-serif';
+  ctx.fillText('BEAD ISLE · 岛民档案', 16, SAFE_TOP + 58);
+
+  roundRect(16, SAFE_TOP + 72, W - 32, 142, 18);
+  ctx.fillStyle = '#FFFDF8';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.08)';
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(56, SAFE_TOP + 118, 26, 0, Math.PI * 2);
+  ctx.fillStyle = CORAL;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(56, SAFE_TOP + 118, 9, 0, Math.PI * 2);
+  ctx.fillStyle = BOARD;
+  ctx.fill();
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillText(me ? me.name : '岛民', 94, SAFE_TOP + 114);
+  ctx.fillStyle = MUTED;
+  ctx.font = '9px sans-serif';
+  ctx.fillText(me ? `ID ${me.id.slice(0, 10)}` : '游客会话', 94, SAFE_TOP + 132);
+
+  const stat = countBeads();
+  const stats = [
+    [String(stat.n), '当前豆子'],
+    [String(me ? me.points : 0), '豆币'],
+    [String((me && me.worksCount) || (me ? 0 : 0)), '作品'],
+  ];
+  for (let i = 0; i < 3; i++) {
+    const sx = 32 + i * ((W - 64) / 3);
+    ctx.fillStyle = INK;
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText(stats[i][0], sx, SAFE_TOP + 176);
+    ctx.fillStyle = MUTED;
+    ctx.font = '8px sans-serif';
+    ctx.fillText(stats[i][1], sx, SAFE_TOP + 191);
+  }
+
+  const actions = [
+    ['我的收藏', '看看收过的图纸'],
+    ['逛集市', '最新作品'],
+    ['新开一块', '清空当前拼板'],
+  ];
+  for (let i = 0; i < 3; i++) {
+    const ay = SAFE_TOP + 232 + i * 58;
+    roundRect(16, ay, W - 32, 48, 12);
+    ctx.fillStyle = '#FFFDF8';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(53,41,27,0.08)';
+    ctx.stroke();
+    ctx.fillStyle = INK;
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText(actions[i][0], 30, ay + 21);
+    ctx.fillStyle = MUTED;
+    ctx.font = '8px sans-serif';
+    ctx.fillText(actions[i][1], 30, ay + 35);
+    ctx.fillStyle = MUTED;
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('›', W - 28, ay + 28);
+    ctx.textAlign = 'left';
+    profileRects[`action${i}`] = { x: 16, y: ay, w: W - 32, h: 48 };
+  }
+
+  drawTabBar(3);
+}
+
+function handleHome(x, y) {
+  const hit = (r) => r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+  if (hit(homeRects.start) || hit(homeRects.workbench)) {
+    screen = 'studio';
+    draw();
+    return;
+  }
+  if (hit(homeRects.gallery)) {
+    switchTab(2);
+    return;
+  }
+  if (hit(homeRects.quick0)) {
+    homeStartNew();
+    return;
+  }
+  if (hit(homeRects.quick1)) {
+    choosePhotoPattern();
+    return;
+  }
+  if (hit(homeRects.quick2)) {
+    screen = 'studio';
+    if (!view3d) toggle3DView();
+    else draw();
+    return;
+  }
+  handleTabBar(x, y);
+}
+
+function handleProfile(x, y) {
+  const hit = (r) => r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+  if (hit(profileRects.action0)) {
+    screen = 'gallery';
+    galleryFilter = 'collected';
+    loadGallery();
+    return;
+  }
+  if (hit(profileRects.action1)) {
+    switchTab(2);
+    return;
+  }
+  if (hit(profileRects.action2)) {
+    homeStartNew();
+    return;
+  }
+  handleTabBar(x, y);
+}
+
 function draw() {
+  if (screen === 'home') {
+    drawHome();
+    return;
+  }
+  if (screen === 'profile') {
+    drawProfile();
+    return;
+  }
   if (screen === 'gallery') {
     drawGallery();
     return;
@@ -2733,6 +3122,8 @@ function loadPhotoPattern(path) {
       board = next;
       fused = Array.from({ length: N }, () => Array(N).fill(false));
       save();
+      screen = 'studio';
+      view3d = false;
       draw();
       wx.showToast({ title: `已转 ${n} 格`, icon: 'none' });
     } catch (e) {
@@ -2749,6 +3140,14 @@ function loadPhotoPattern(path) {
 }
 
 function handle(x, y) {
+  if (screen === 'home') {
+    handleHome(x, y);
+    return;
+  }
+  if (screen === 'profile') {
+    handleProfile(x, y);
+    return;
+  }
   if (screen === 'gallery') {
     handleGallery(x, y);
     return;
@@ -2759,6 +3158,14 @@ function handle(x, y) {
   }
   if (overlay) {
     handleOverlay(x, y);
+    return;
+  }
+
+  // 工位左上角 logo 回首页
+  if (x <= 160 && y <= SAFE_TOP + 55) {
+    screen = 'home';
+    view3d = false;
+    draw();
     return;
   }
 
@@ -2945,11 +3352,10 @@ function handleGallery(x, y) {
 
 function handleDetail(x, y) {
   if (x >= 16 && x <= 68 && y >= SAFE_TOP + 12 && y <= SAFE_TOP + 42) {
-    screen = 'gallery';
+    screen = 'home';
     detail = null;
     comments = [];
-    if (galleryFilter === 'collected') loadGallery();
-    else draw();
+    draw();
     return;
   }
   if (!detail) return;
@@ -3047,6 +3453,11 @@ function handleOverlay(x, y) {
 
 load();
 loadStock();
+ensureSession()
+  .then(() => {
+    if (screen === 'home' || screen === 'profile') draw();
+  })
+  .catch(() => {});
 draw();
 
 wx.onTouchStart((e) => {
