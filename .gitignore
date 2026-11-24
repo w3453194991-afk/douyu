@@ -13,3 +13,4 @@ data/covers/
 coverage/
 *.log
 .DS_Store
+wechat-mini/project.private.config.json
