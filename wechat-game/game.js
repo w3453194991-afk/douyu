@@ -17,15 +17,540 @@ ctx.scale(DPR, DPR);
 
 const N = 29;
 const COLORS = [
-  { hex: '#E0582F', code: 'P08' },
-  { hex: '#F5C24F', code: 'P05' },
-  { hex: '#8ECFBB', code: 'P21' },
-  { hex: '#4DA7D9', code: 'P18' },
-  { hex: '#F5B0C0', code: 'P12' },
-  { hex: '#B49AD9', code: 'P15' },
-  { hex: '#2C5FBF', code: 'P17' },
-  { hex: '#20222A', code: 'P30' },
+  { code: "P08", name: "朱红", hex: "#E0582F" },
+  { code: "P05", name: "柠黄", hex: "#F5C24F" },
+  { code: "P21", name: "薄荷", hex: "#8ECFBB" },
+  { code: "P18", name: "天蓝", hex: "#4DA7D9" },
+  { code: "P12", name: "藕花", hex: "#F5B0C0" },
+  { code: "P15", name: "薰衣草", hex: "#B49AD9" },
+  { code: "P17", name: "钴蓝", hex: "#2C5FBF" },
+  { code: "P30", name: "墨黑", hex: "#20222A" },
+  { code: "P01", name: "雪白", hex: "#F6F3EA" },
+  { code: "P02", name: "奶油", hex: "#F2E6CC" },
+  { code: "P03", name: "象牙", hex: "#E4D4AE" },
+  { code: "P28", name: "岩灰", hex: "#8B9097" },
+  { code: "P29", name: "炭灰", hex: "#444A54" },
+  { code: "P31", name: "银亮", hex: "#C6CBD1" },
+  { code: "P32", name: "鎏金", hex: "#C9A227" },
+  { code: "P04", name: "柠檬", hex: "#F6DB57" },
+  { code: "P06", name: "姜黄", hex: "#E5A03C" },
+  { code: "P07", name: "橙色", hex: "#EE8835" },
+  { code: "P09", name: "正红", hex: "#D6393B" },
+  { code: "P10", name: "樱桃", hex: "#BF2A45" },
+  { code: "P11", name: "玫粉", hex: "#E5487E" },
+  { code: "P13", name: "蜜桃", hex: "#F7CCB3" },
+  { code: "P25", name: "咖啡", hex: "#6B4328" },
+  { code: "P26", name: "驼色", hex: "#B8895C" },
+  { code: "P27", name: "沙色", hex: "#D8BC98" },
+  { code: "P14", name: "葡萄紫", hex: "#78499B" },
+  { code: "P16", name: "深海蓝", hex: "#1F376D" },
+  { code: "P19", name: "雾蓝", hex: "#A7CEE7" },
+  { code: "P20", name: "孔雀", hex: "#1E8E8B" },
+  { code: "P22", name: "森林", hex: "#2C6A4E" },
+  { code: "P23", name: "草绿", hex: "#5EA24B" },
+  { code: "P24", name: "青柠", hex: "#AECC47" },
+  { code: "P33", name: "荧光粉", hex: "#FF5EA8" },
+  { code: "P34", name: "荧光绿", hex: "#9BF24D" },
+  { code: "P35", name: "夜光", hex: "#E4F6C6" },
+  { code: "P36", name: "透蓝", hex: "#BFE7F6" },
+  { code: "H01", name: "White", hex: "#ECEDED", brand: "HAMA" },
+  { code: "H02", name: "Cream", hex: "#F0E8B9", brand: "HAMA" },
+  { code: "H03", name: "Yellow", hex: "#F0B901", brand: "HAMA" },
+  { code: "H04", name: "Orange", hex: "#E64F27", brand: "HAMA" },
+  { code: "H05", name: "Red", hex: "#B63136", brand: "HAMA" },
+  { code: "H06", name: "Pink", hex: "#E1889F", brand: "HAMA" },
+  { code: "H07", name: "Purple", hex: "#694A82", brand: "HAMA" },
+  { code: "H08", name: "Blue", hex: "#2C4690", brand: "HAMA" },
+  { code: "H09", name: "Light Blue", hex: "#305CB0", brand: "HAMA" },
+  { code: "H10", name: "Green", hex: "#256847", brand: "HAMA" },
+  { code: "H11", name: "Light Green", hex: "#49AE89", brand: "HAMA" },
+  { code: "H12", name: "Brown", hex: "#534137", brand: "HAMA" },
+  { code: "H13", name: "Translucent Red", hex: "#C02435", brand: "HAMA" },
+  { code: "H14", name: "Translucent Yellow", hex: "#E4AA32", brand: "HAMA" },
+  { code: "H15", name: "Translucent Blue", hex: "#487ED5", brand: "HAMA" },
+  { code: "H16", name: "Translucent Green", hex: "#37B876", brand: "HAMA" },
+  { code: "H17", name: "Grey", hex: "#83888A", brand: "HAMA" },
+  { code: "H18", name: "Black", hex: "#2E2F31", brand: "HAMA" },
+  { code: "H19", name: "Clear", hex: "#D8D2CE", brand: "HAMA" },
+  { code: "H20", name: "Reddish Brown", hex: "#7F332A", brand: "HAMA" },
+  { code: "H21", name: "Light Brown", hex: "#A5693F", brand: "HAMA" },
+  { code: "H22", name: "Dark Red", hex: "#A52D36", brand: "HAMA" },
+  { code: "H24", name: "Translucent Purple", hex: "#683E9A", brand: "HAMA" },
+  { code: "H25", name: "Translucent Brown", hex: "#87593D", brand: "HAMA" },
+  { code: "H26", name: "Matt Rose", hex: "#DE9B90", brand: "HAMA" },
+  { code: "H27", name: "Beige", hex: "#DEB48B", brand: "HAMA" },
+  { code: "H28", name: "Dark Green", hex: "#363F38", brand: "HAMA" },
+  { code: "H29", name: "Claret", hex: "#B9395E", brand: "HAMA" },
+  { code: "H30", name: "Burgundy", hex: "#592F38", brand: "HAMA" },
+  { code: "H31", name: "Turquoise", hex: "#6797AE", brand: "HAMA" },
+  { code: "H32", name: "Neon Fuchsia", hex: "#FF208D", brand: "HAMA" },
+  { code: "H33", name: "Cerise", hex: "#FF3956", brand: "HAMA" },
+  { code: "H34", name: "Neon Yellow", hex: "#E5EF13", brand: "HAMA" },
+  { code: "H35", name: "Neon Red", hex: "#FF2833", brand: "HAMA" },
+  { code: "H36", name: "Neon Blue", hex: "#2353B0", brand: "HAMA" },
+  { code: "H37", name: "Neon Green", hex: "#06B73C", brand: "HAMA" },
+  { code: "H38", name: "Neon Orange", hex: "#FD8600", brand: "HAMA" },
+  { code: "H39", name: "Fluorescent Yellow", hex: "#F1F21C", brand: "HAMA" },
+  { code: "H40", name: "Fluorescent Orange", hex: "#FE630B", brand: "HAMA" },
+  { code: "H41", name: "Fluorescent Blue", hex: "#2659B2", brand: "HAMA" },
+  { code: "H42", name: "Fluorescent Green", hex: "#0CBD51", brand: "HAMA" },
+  { code: "H43", name: "Pastel Yellow", hex: "#F0EA37", brand: "HAMA" },
+  { code: "H44", name: "Pastel Red", hex: "#EE6972", brand: "HAMA" },
+  { code: "H45", name: "Pastel Purple", hex: "#886DB9", brand: "HAMA" },
+  { code: "H46", name: "Pastel Blue", hex: "#629ED7", brand: "HAMA" },
+  { code: "H47", name: "Pastel Green", hex: "#83CB70", brand: "HAMA" },
+  { code: "H48", name: "Pastel Pink", hex: "#CF70B7", brand: "HAMA" },
+  { code: "H49", name: "Azure", hex: "#4998BC", brand: "HAMA" },
+  { code: "H55", name: "Glow In The Dark - Green", hex: "#FAF8ED", brand: "HAMA" },
+  { code: "H56", name: "Glow In The Dark - Red", hex: "#EDBF9F", brand: "HAMA" },
+  { code: "H57", name: "Blue (Glow In The Dark)", hex: "#C4D0E3", brand: "HAMA" },
+  { code: "H60", name: "Teddybear Brown", hex: "#F49422", brand: "HAMA" },
+  { code: "H61", name: "Gold", hex: "#D99350", brand: "HAMA" },
+  { code: "H62", name: "Silver", hex: "#48474A", brand: "HAMA" },
+  { code: "H63", name: "Bronze", hex: "#42312F", brand: "HAMA" },
+  { code: "H64", name: "Pearl", hex: "#EFEBE4", brand: "HAMA" },
+  { code: "H70", name: "Light Grey", hex: "#B6B6D4", brand: "HAMA" },
+  { code: "H71", name: "Dark Grey", hex: "#464541", brand: "HAMA" },
+  { code: "H72", name: "Translucent Pink", hex: "#F097B0", brand: "HAMA" },
+  { code: "H73", name: "Translucent Aqua", hex: "#59AEF5", brand: "HAMA" },
+  { code: "H74", name: "Translucent Lilac", hex: "#5B55BD", brand: "HAMA" },
+  { code: "H75", name: "Light Nougat", hex: "#BF7B4D", brand: "HAMA" },
+  { code: "H76", name: "Nougat", hex: "#663317", brand: "HAMA" },
+  { code: "H77", name: "Cloudy White", hex: "#EDE7DF", brand: "HAMA" },
+  { code: "H78", name: "Light Peach", hex: "#FFC99A", brand: "HAMA" },
+  { code: "H79", name: "Apricot", hex: "#F08643", brand: "HAMA" },
+  { code: "H82", name: "Plum", hex: "#962F5C", brand: "HAMA" },
+  { code: "H83", name: "Petrol Blue", hex: "#0178A4", brand: "HAMA" },
+  { code: "H84", name: "Olive Green", hex: "#8B924C", brand: "HAMA" },
+  { code: "H95", name: "Pastel Rose", hex: "#F8CCE0", brand: "HAMA" },
+  { code: "H96", name: "Pastel Lilac", hex: "#D4B1E3", brand: "HAMA" },
+  { code: "H97", name: "Pastel Ice Blue", hex: "#A2D3FE", brand: "HAMA" },
+  { code: "H98", name: "Pastel Mint", hex: "#9ADBB1", brand: "HAMA" },
+  { code: "H101", name: "Eucalyptus", hex: "#A9C39B", brand: "HAMA" },
+  { code: "H102", name: "Forest Green", hex: "#356B2D", brand: "HAMA" },
+  { code: "H103", name: "Light Yellow", hex: "#FFE660", brand: "HAMA" },
+  { code: "H104", name: "Lime", hex: "#BCD122", brand: "HAMA" },
+  { code: "H105", name: "Light Apricot", hex: "#FFAC78", brand: "HAMA" },
+  { code: "H106", name: "Light Lavender", hex: "#CCC5ED", brand: "HAMA" },
+  { code: "H107", name: "Lavender", hex: "#6A87C1", brand: "HAMA" },
+  { code: "H108", name: "Aubergine", hex: "#2A2536", brand: "HAMA" },
+  { code: "H109", name: "Cloudy Grey", hex: "#8A847F", brand: "HAMA" },
+  { code: "H110", name: "Matcha", hex: "#838956", brand: "HAMA" },
+  { code: "H111", name: "Dark Blush", hex: "#835854", brand: "HAMA" },
+  { code: "H112", name: "Blush", hex: "#AD8A82", brand: "HAMA" },
+  { code: "H113", name: "Aqua", hex: "#5F887B", brand: "HAMA" },
+  { code: "H114", name: "Cherry Red", hex: "#9A2C31", brand: "HAMA" },
+  { code: "H115", name: "Bright Green", hex: "#6E975F", brand: "HAMA" },
+  { code: "H116", name: "Midnight Blue", hex: "#222838", brand: "HAMA" },
+  { code: "H117", name: "Taupe Grey", hex: "#777169", brand: "HAMA" },
+  { code: "H118", name: "Maroon Red", hex: "#612932", brand: "HAMA" },
+  { code: "H119", name: "Sky Blue", hex: "#4167B4", brand: "HAMA" },
+  { code: "H90A", name: "Stripe Mix - Red & White", hex: "#B63136", brand: "HAMA" },
+  { code: "H90B", name: "Stripe Mix - Black & White", hex: "#191919", brand: "HAMA" },
+  { code: "H90C", name: "Stripe Mix - Azure & White", hex: "#4998BC", brand: "HAMA" },
+  { code: "H90D", name: "Stripe Mix - Yellow & Red", hex: "#F0B901", brand: "HAMA" },
+  { code: "H90E", name: "Stripe Mix - Purple & Pink", hex: "#694A82", brand: "HAMA" },
+  { code: "H90F", name: "Stripe Mix - Blue & Green", hex: "#305CB0", brand: "HAMA" },
+  { code: "H120", name: "Dusty Blue", hex: "#ECF4F8", brand: "HAMA" },
+  { code: "H121", name: "Fuchsia Pink", hex: "#D0357B", brand: "HAMA" },
+  { code: "H122", name: "Mustard", hex: "#CCA23B", brand: "HAMA" },
+  { code: "P01", name: "White", hex: "#F1F1F1", brand: "PERLER" },
+  { code: "P02", name: "Cream", hex: "#E0DEA9", brand: "PERLER" },
+  { code: "P03", name: "Yellow", hex: "#ECD800", brand: "PERLER" },
+  { code: "P04", name: "Orange", hex: "#ED6120", brand: "PERLER" },
+  { code: "P05", name: "Red", hex: "#F01820", brand: "PERLER" },
+  { code: "P06", name: "Bubblegum", hex: "#DD669B", brand: "PERLER" },
+  { code: "P07", name: "Purple", hex: "#604089", brand: "PERLER" },
+  { code: "P08", name: "Dark Blue", hex: "#2B3F87", brand: "PERLER" },
+  { code: "P09", name: "Light Blue", hex: "#3370C0", brand: "PERLER" },
+  { code: "P10", name: "Dark Green", hex: "#1C753E", brand: "PERLER" },
+  { code: "P11", name: "Light Green", hex: "#56BA9F", brand: "PERLER" },
+  { code: "P12", name: "Brown", hex: "#513931", brand: "PERLER" },
+  { code: "P17", name: "Grey", hex: "#8A8D91", brand: "PERLER" },
+  { code: "P18", name: "Black", hex: "#2E2F32", brand: "PERLER" },
+  { code: "P20", name: "Rust", hex: "#8C372C", brand: "PERLER" },
+  { code: "P21", name: "Light Brown", hex: "#815D34", brand: "PERLER" },
+  { code: "P33", name: "Peach", hex: "#EEBAB2", brand: "PERLER" },
+  { code: "P35", name: "Tan", hex: "#BC9371", brand: "PERLER" },
+  { code: "P38", name: "Magenta", hex: "#F22A7B", brand: "PERLER" },
+  { code: "P47", name: "Neon Yellow", hex: "#DCE002", brand: "PERLER" },
+  { code: "P48", name: "Neon Orange", hex: "#FF7700", brand: "PERLER" },
+  { code: "P49", name: "Neon Green", hex: "#019E43", brand: "PERLER" },
+  { code: "P50", name: "Neon Pink", hex: "#FF3991", brand: "PERLER" },
+  { code: "P52", name: "Pastel Blue", hex: "#5390D1", brand: "PERLER" },
+  { code: "P53", name: "Pastel Green", hex: "#76C882", brand: "PERLER" },
+  { code: "P54", name: "Pastel Lavender", hex: "#8A72C1", brand: "PERLER" },
+  { code: "P56", name: "Pastel Yellow", hex: "#FEF875", brand: "PERLER" },
+  { code: "P57", name: "Cheddar", hex: "#F1AA0C", brand: "PERLER" },
+  { code: "P58", name: "Toothpaste", hex: "#93C8D4", brand: "PERLER" },
+  { code: "P59", name: "Hot Coral", hex: "#FF3851", brand: "PERLER" },
+  { code: "P60", name: "Plum", hex: "#A24B9C", brand: "PERLER" },
+  { code: "P61", name: "Kiwi Lime", hex: "#6CBE13", brand: "PERLER" },
+  { code: "P62", name: "Turquoise", hex: "#2B89C6", brand: "PERLER" },
+  { code: "P63", name: "Blush", hex: "#FF8285", brand: "PERLER" },
+  { code: "P70", name: "Periwinkle Blue", hex: "#647CBE", brand: "PERLER" },
+  { code: "P75", name: "Glow Green", hex: "#BEC696", brand: "PERLER" },
+  { code: "P79", name: "Light Pink", hex: "#F6B3DD", brand: "PERLER" },
+  { code: "P80", name: "Bright Green", hex: "#4FAD42", brand: "PERLER" },
+  { code: "P81", name: "Light Gray", hex: "#EEE3CF", brand: "PERLER" },
+  { code: "P82", name: "Light Lavender", hex: "#AD98D4", brand: "PERLER" },
+  { code: "P83", name: "Pink", hex: "#E44892", brand: "PERLER" },
+  { code: "P85", name: "Gold", hex: "#BB7634", brand: "PERLER" },
+  { code: "P88", name: "Raspberry", hex: "#A53061", brand: "PERLER" },
+  { code: "P89", name: "Neon Blue", hex: "#406AE1", brand: "PERLER" },
+  { code: "P90", name: "Butterscotch", hex: "#D48437", brand: "PERLER" },
+  { code: "P91", name: "Parrot Green", hex: "#067C81", brand: "PERLER" },
+  { code: "P92", name: "Dark Grey", hex: "#4D5156", brand: "PERLER" },
+  { code: "P93", name: "Blueberry Cream", hex: "#8297D9", brand: "PERLER" },
+  { code: "P96", name: "Cranapple", hex: "#801922", brand: "PERLER" },
+  { code: "P97", name: "Prickly Pear", hex: "#BDDA01", brand: "PERLER" },
+  { code: "P98", name: "Sand", hex: "#E4B690", brand: "PERLER" },
+  { code: "P100", name: "Pearl Coral", hex: "#F97E79", brand: "PERLER" },
+  { code: "P101", name: "Pearl Light Blue", hex: "#7AAEA2", brand: "PERLER" },
+  { code: "P102", name: "Pearl Green", hex: "#84B791", brand: "PERLER" },
+  { code: "P103", name: "Pearl Yellow", hex: "#CAC033", brand: "PERLER" },
+  { code: "P104", name: "Pearl Light Pink", hex: "#D7A8A2", brand: "PERLER" },
+  { code: "P105", name: "Silver", hex: "#777B81", brand: "PERLER" },
+  { code: "P179", name: "Evergreen", hex: "#114938", brand: "PERLER" },
+  { code: "P181", name: "Light Grey", hex: "#B3BAB8", brand: "PERLER" },
+  { code: "P182", name: "Lavender", hex: "#AF9FCE", brand: "PERLER" },
+  { code: "P199", name: "Shamrock", hex: "#008F53", brand: "PERLER" },
+  { code: "P200", name: "Cobalt", hex: "#0065B1", brand: "PERLER" },
+  { code: "P201", name: "Midnight", hex: "#2F3C55", brand: "PERLER" },
+  { code: "P202", name: "Robin's Egg", hex: "#A9CDD5", brand: "PERLER" },
+  { code: "P203", name: "Flamingo", hex: "#F2AFB7", brand: "PERLER" },
+  { code: "P204", name: "Salmon", hex: "#E1747A", brand: "PERLER" },
+  { code: "P205", name: "Fawn", hex: "#C9A385", brand: "PERLER" },
+  { code: "P206", name: "Pewter", hex: "#94A19D", brand: "PERLER" },
+  { code: "P207", name: "Charcoal", hex: "#4F595A", brand: "PERLER" },
+  { code: "P208", name: "Toasted Marshmallow", hex: "#DEDACE", brand: "PERLER" },
+  { code: "P210", name: "Orchid", hex: "#B1628E", brand: "PERLER" },
+  { code: "P211", name: "Tomato", hex: "#D14337", brand: "PERLER" },
+  { code: "P212", name: "Spice", hex: "#D9593A", brand: "PERLER" },
+  { code: "P213", name: "Apricot", hex: "#F5A168", brand: "PERLER" },
+  { code: "P214", name: "Sherbet", hex: "#D8E47C", brand: "PERLER" },
+  { code: "P215", name: "Mist", hex: "#93B0BD", brand: "PERLER" },
+  { code: "P216", name: "Sky", hex: "#4AC0D8", brand: "PERLER" },
+  { code: "P217", name: "Lagoon", hex: "#00A4AC", brand: "PERLER" },
+  { code: "P218", name: "Teal", hex: "#047F8A", brand: "PERLER" },
+  { code: "P219", name: "Fern", hex: "#7F971A", brand: "PERLER" },
+  { code: "P220", name: "Olive", hex: "#696E31", brand: "PERLER" },
+  { code: "P239", name: "Mocha", hex: "#C8B693", brand: "PERLER" },
+  { code: "P240", name: "Mint", hex: "#B3EED5", brand: "PERLER" },
+  { code: "P241", name: "Sour Apple", hex: "#A3DE6F", brand: "PERLER" },
+  { code: "P242", name: "Cotton Candy", hex: "#F479B0", brand: "PERLER" },
+  { code: "P243", name: "Grape", hex: "#503B9C", brand: "PERLER" },
+  { code: "P244", name: "Rose", hex: "#D25D72", brand: "PERLER" },
+  { code: "P245", name: "Iris", hex: "#4E56A3", brand: "PERLER" },
+  { code: "P246", name: "Tangerine", hex: "#FD5918", brand: "PERLER" },
+  { code: "P247", name: "Forest", hex: "#005D57", brand: "PERLER" },
+  { code: "P248", name: "Eggplant", hex: "#6F3255", brand: "PERLER" },
+  { code: "P249", name: "Honey", hex: "#DA8C2C", brand: "PERLER" },
+  { code: "P250", name: "Gingerbread", hex: "#7E5446", brand: "PERLER" },
+  { code: "P251", name: "Thistle", hex: "#8C8CA7", brand: "PERLER" },
+  { code: "P252", name: "Denim", hex: "#4C6388", brand: "PERLER" },
+  { code: "P253", name: "Sage", hex: "#9AA98E", brand: "PERLER" },
+  { code: "P254", name: "Orange Cream", hex: "#EFB79B", brand: "PERLER" },
+  { code: "P255", name: "Fruit Punch", hex: "#CA3B65", brand: "PERLER" },
+  { code: "P256", name: "Fuchsia", hex: "#CB59B9", brand: "PERLER" },
+  { code: "P257", name: "Mulberry", hex: "#714875", brand: "PERLER" },
+  { code: "P258", name: "Slime", hex: "#C8C85C", brand: "PERLER" },
+  { code: "P259", name: "Stone", hex: "#988C8C", brand: "PERLER" },
+  { code: "P260", name: "Dark Spruce", hex: "#14313B", brand: "PERLER" },
+  { code: "P261", name: "Cocoa", hex: "#392928", brand: "PERLER" },
+  { code: "P262", name: "Slate Blue", hex: "#5E6D7B", brand: "PERLER" },
+  { code: "P263", name: "Celery", hex: "#BED4A6", brand: "PERLER" },
+  { code: "P265", name: "Twilight Plum", hex: "#C685B1", brand: "PERLER" },
+  { code: "P266", name: "Caribbean Sea", hex: "#6CC8AD", brand: "PERLER" },
+  { code: "P267", name: "Frosted Lilac", hex: "#CDB7C3", brand: "PERLER" },
+  { code: "P268", name: "Sunflower", hex: "#DEBA0B", brand: "PERLER" },
+  { code: "P269", name: "Lemon", hex: "#F6D901", brand: "PERLER" },
+  { code: "P272", name: "Coral", hex: "#FF9A8B", brand: "PERLER" },
+  { code: "P273", name: "Brick", hex: "#FC9574", brand: "PERLER" },
+  { code: "P274", name: "Rich Butter", hex: "#F6CA69", brand: "PERLER" },
+  { code: "P275", name: "Peacock", hex: "#0090AC", brand: "PERLER" },
+  { code: "P276", name: "Carnation Pink", hex: "#F8C7C9", brand: "PERLER" },
+  { code: "P961", name: "Cherry", hex: "#9D2B3A", brand: "PERLER" },
+  { code: "P19", name: "Clear", hex: "#F5FAFD", brand: "PERLER" },
+  { code: "P39A", name: "Glitter Mix - Red", hex: "#FA413D", brand: "PERLER" },
+  { code: "P39B", name: "Glitter Mix - Green", hex: "#19B4BE", brand: "PERLER" },
+  { code: "P39C", name: "Glitter Mix - Blue", hex: "#3380DC", brand: "PERLER" },
+  { code: "P39D", name: "Glitter Mix - Yellow", hex: "#FFEB17", brand: "PERLER" },
+  { code: "P39E", name: "Glitter Mix - Purple", hex: "#78639C", brand: "PERLER" },
+  { code: "P39F", name: "Glitter Mix - Clear", hex: "#F5FAFD", brand: "PERLER" },
+  { code: "P72", name: "Coral", hex: "#FF9683", brand: "PERLER" },
+  { code: "P73", name: "Brick", hex: "#F98E66", brand: "PERLER" },
+  { code: "P74", name: "Rich Butter", hex: "#F8C961", brand: "PERLER" },
+  { code: "P75G", name: "Glow in the Dark - Green", hex: "#E6FAE6", brand: "PERLER" },
+  { code: "P76", name: "Carnation", hex: "#FED8D8", brand: "PERLER" },
+  { code: "P165A", name: "Newsprint Stripe Mix - Black", hex: "#191919", brand: "PERLER" },
+  { code: "P165B", name: "Newsprint Stripe Mix - Grey", hex: "#8A8D91", brand: "PERLER" },
+  { code: "P167A", name: "Glow in the Dark Mix - Green", hex: "#E6FAE6", brand: "PERLER" },
+  { code: "P167B", name: "Glow in the Dark Mix - Blue", hex: "#87C8E6", brand: "PERLER" },
+  { code: "P167C", name: "Glow in the Dark Mix - Pink", hex: "#FAAFC8", brand: "PERLER" },
+  { code: "P167D", name: "Glow in the Dark Mix - Orange", hex: "#FAD28C", brand: "PERLER" },
+  { code: "P184", name: "Clear Blue", hex: "#A0BEDC", brand: "PERLER" },
+  { code: "P185A", name: "Metallic Mix - Gold Metallic", hex: "#E6B45A", brand: "PERLER" },
+  { code: "P185B", name: "Metallic Mix - Pearl Silver", hex: "#777B81", brand: "PERLER" },
+  { code: "P185C", name: "Metallic Mix - Bronze", hex: "#966E5A", brand: "PERLER" },
+  { code: "P186A", name: "Neon Mix - Blue", hex: "#4664AA", brand: "PERLER" },
+  { code: "P186B", name: "Neon Mix - Green", hex: "#06B73C", brand: "PERLER" },
+  { code: "P186C", name: "Neon Mix - Yellow", hex: "#E5EF13", brand: "PERLER" },
+  { code: "P186D", name: "Neon Mix - Orange", hex: "#FD8600", brand: "PERLER" },
+  { code: "P186E", name: "Neon Mix - Fuchsia", hex: "#DC6496", brand: "PERLER" },
+  { code: "P187", name: "Clear Glitter", hex: "#F5FAFD", brand: "PERLER" },
+  { code: "P191", name: "Pink Glitter", hex: "#DC5078", brand: "PERLER" },
+  { code: "P193", name: "Black Glitter", hex: "#191919", brand: "PERLER" },
+  { code: "P646", name: "Toffee", hex: "#8F562A", brand: "PERLER" },
+  { code: "P647", name: "Amber", hex: "#C5572C", brand: "PERLER" },
+  { code: "P648", name: "Jade", hex: "#05C07E", brand: "PERLER" },
+  { code: "P649", name: "Shark", hex: "#6F8675", brand: "PERLER" },
+  { code: "P650", name: "Capri Blue", hex: "#23C9DB", brand: "PERLER" },
+  { code: "P651", name: "Seafoam", hex: "#A2C1BD", brand: "PERLER" },
+  { code: "P652", name: "Violet Frost", hex: "#C8C9D8", brand: "PERLER" },
+  { code: "P653", name: "Indigo", hex: "#3A4160", brand: "PERLER" },
+  { code: "P654", name: "Oyster", hex: "#D8C68F", brand: "PERLER" },
+  { code: "P655", name: "Khaki", hex: "#A9955D", brand: "PERLER" },
+  { code: "P656", name: "Seaweed", hex: "#957338", brand: "PERLER" },
+  { code: "P657", name: "Steel", hex: "#44494C", brand: "PERLER" },
+  { code: "P658", name: "Champagne", hex: "#E2B984", brand: "PERLER" },
+  { code: "P659", name: "Wheat", hex: "#E0B47E", brand: "PERLER" },
+  { code: "P660", name: "Colonial Blue", hex: "#60AAC2", brand: "PERLER" },
+  { code: "P661", name: "Faded Rose", hex: "#A85F7E", brand: "PERLER" },
+  { code: "P662", name: "Teaberry", hex: "#C2789A", brand: "PERLER" },
+  { code: "P663", name: "Persimmon", hex: "#D97F6F", brand: "PERLER" },
+  { code: "P664", name: "Violet", hex: "#984BBC", brand: "PERLER" },
+  { code: "P665", name: "Deep Purple", hex: "#4C2459", brand: "PERLER" },
+  { code: "P666", name: "Beige", hex: "#AD734F", brand: "PERLER" },
+  { code: "P667", name: "Iron", hex: "#332E28", brand: "PERLER" },
+  { code: "P668", name: "Lipstick", hex: "#F4363B", brand: "PERLER" },
+  { code: "S01", name: "White", hex: "#FFFFFF", brand: "ARTKAL" },
+  { code: "S02", name: "Burning Sand", hex: "#EDA277", brand: "ARTKAL" },
+  { code: "S03", name: "Tangerine", hex: "#FF9F1A", brand: "ARTKAL" },
+  { code: "S04", name: "Orange", hex: "#FF671F", brand: "ARTKAL" },
+  { code: "S05", name: "Tall Poppy", hex: "#E10600", brand: "ARTKAL" },
+  { code: "S06", name: "Raspberry Pink", hex: "#EC86D0", brand: "ARTKAL" },
+  { code: "S07", name: "Gray", hex: "#9B9B9B", brand: "ARTKAL" },
+  { code: "S08", name: "Emerald", hex: "#24DE5B", brand: "ARTKAL" },
+  { code: "S09", name: "Dark Green", hex: "#00685E", brand: "ARTKAL" },
+  { code: "S10", name: "Baby Blue", hex: "#68BBF2", brand: "ARTKAL" },
+  { code: "S11", name: "Dark Blue", hex: "#0033A3", brand: "ARTKAL" },
+  { code: "S12", name: "Pastel Lavender", hex: "#A05EB5", brand: "ARTKAL" },
+  { code: "S13", name: "Black", hex: "#000000", brand: "ARTKAL" },
+  { code: "S14", name: "Sandstorm", hex: "#FAE03F", brand: "ARTKAL" },
+  { code: "S15", name: "Redwood", hex: "#7A3E2C", brand: "ARTKAL" },
+  { code: "S16", name: "Brown", hex: "#401310", brand: "ARTKAL" },
+  { code: "S17", name: "Light Brown", hex: "#7B4D35", brand: "ARTKAL" },
+  { code: "S18", name: "Sand", hex: "#CC9966", brand: "ARTKAL" },
+  { code: "S19", name: "Bubble Gun", hex: "#FCBFA9", brand: "ARTKAL" },
+  { code: "S20", name: "Green", hex: "#609E6B", brand: "ARTKAL" },
+  { code: "S21", name: "Pastel Green", hex: "#87D839", brand: "ARTKAL" },
+  { code: "S22", name: "Purple", hex: "#330072", brand: "ARTKAL" },
+  { code: "S23", name: "Royal Purple", hex: "#64359B", brand: "ARTKAL" },
+  { code: "S24", name: "True Blue", hex: "#165AA8", brand: "ARTKAL" },
+  { code: "S25", name: "Hot Pink", hex: "#FF34B3", brand: "ARTKAL" },
+  { code: "S26", name: "Magenta", hex: "#FF2185", brand: "ARTKAL" },
+  { code: "S27", name: "Yellow", hex: "#FFD100", brand: "ARTKAL" },
+  { code: "S28", name: "Lily Pink", hex: "#EAB8E4", brand: "ARTKAL" },
+  { code: "S29", name: "Pastel Yellow", hex: "#FFFF7D", brand: "ARTKAL" },
+  { code: "S30", name: "Shadow Green", hex: "#99D6EA", brand: "ARTKAL" },
+  { code: "S31", name: "Sea Mist", hex: "#9EE5B0", brand: "ARTKAL" },
+  { code: "S32", name: "Beeswax", hex: "#F7D679", brand: "ARTKAL" },
+  { code: "S33", name: "Maverick", hex: "#C5B4E3", brand: "ARTKAL" },
+  { code: "S34", name: "Red", hex: "#D11F25", brand: "ARTKAL" },
+  { code: "S35", name: "Mona Lisa", hex: "#F7CED7", brand: "ARTKAL" },
+  { code: "S36", name: "Old Pink", hex: "#C9809E", brand: "ARTKAL" },
+  { code: "S37", name: "Blue-Green", hex: "#71D8BF", brand: "ARTKAL" },
+  { code: "S38", name: "Burgundy", hex: "#A8395B", brand: "ARTKAL" },
+  { code: "S39", name: "Yellow Orange", hex: "#FF963B", brand: "ARTKAL" },
+  { code: "S40", name: "Carnation Pink", hex: "#F1A7DC", brand: "ARTKAL" },
+  { code: "S41", name: "Copper", hex: "#9A5516", brand: "ARTKAL" },
+  { code: "S42", name: "Silver", hex: "#A09F9D", brand: "ARTKAL" },
+  { code: "S43", name: "Dark Gray", hex: "#767777", brand: "ARTKAL" },
+  { code: "S44", name: "Sky Blue", hex: "#A6E7FF", brand: "ARTKAL" },
+  { code: "S45", name: "Medium Turquoise", hex: "#00B2A9", brand: "ARTKAL" },
+  { code: "S46", name: "Bright Green", hex: "#73D33C", brand: "ARTKAL" },
+  { code: "S47", name: "Marigold", hex: "#B47E00", brand: "ARTKAL" },
+  { code: "S48", name: "Corn", hex: "#FFC72C", brand: "ARTKAL" },
+  { code: "S49", name: "Mulberry Wood", hex: "#72195F", brand: "ARTKAL" },
+  { code: "S50", name: "Mandys Pink", hex: "#FAAA72", brand: "ARTKAL" },
+  { code: "S51", name: "Spring Sun", hex: "#FCFBCD", brand: "ARTKAL" },
+  { code: "S52", name: "Picasso", hex: "#F2F0A1", brand: "ARTKAL" },
+  { code: "S53", name: "Turquoise", hex: "#69B3E7", brand: "ARTKAL" },
+  { code: "S54", name: "Light Blue", hex: "#0090DA", brand: "ARTKAL" },
+  { code: "S55", name: "Pistachio", hex: "#ADDC91", brand: "ARTKAL" },
+  { code: "S56", name: "Bright Carrot", hex: "#FF6A13", brand: "ARTKAL" },
+  { code: "S57", name: "Buccaneer", hex: "#B35749", brand: "ARTKAL" },
+  { code: "S58", name: "Paprika", hex: "#A50034", brand: "ARTKAL" },
+  { code: "S59", name: "Butterfly Bush", hex: "#320F89", brand: "ARTKAL" },
+  { code: "S60", name: "Lavender", hex: "#A77BCA", brand: "ARTKAL" },
+  { code: "S61", name: "Key Lomen Pie", hex: "#CEDC00", brand: "ARTKAL" },
+  { code: "S62", name: "Green Tea", hex: "#007C44", brand: "ARTKAL" },
+  { code: "S63", name: "Metallic Gold", hex: "#585735", brand: "ARTKAL" },
+  { code: "S64", name: "Black Rock", hex: "#1D115D", brand: "ARTKAL" },
+  { code: "S65", name: "Canary", hex: "#F3EA5D", brand: "ARTKAL" },
+  { code: "S66", name: "Blaze Orange", hex: "#F45A3A", brand: "ARTKAL" },
+  { code: "S67", name: "Vanilla", hex: "#F3CFB3", brand: "ARTKAL" },
+  { code: "S68", name: "Tan", hex: "#E7C7AC", brand: "ARTKAL" },
+  { code: "S69", name: "Mine Shaft", hex: "#4D4D4F", brand: "ARTKAL" },
+  { code: "S70", name: "Drark Algae", hex: "#9BBC11", brand: "ARTKAL" },
+  { code: "S71", name: "Jade Green", hex: "#00852B", brand: "ARTKAL" },
+  { code: "S72", name: "Light Sea Blue", hex: "#59D5D8", brand: "ARTKAL" },
+  { code: "S73", name: "Steel Blue", hex: "#48A9C5", brand: "ARTKAL" },
+  { code: "S74", name: "Azure", hex: "#00AED6", brand: "ARTKAL" },
+  { code: "S75", name: "Dark Steel Blue", hex: "#0085AD", brand: "ARTKAL" },
+  { code: "S76", name: "Sea Blue", hex: "#00AEC7", brand: "ARTKAL" },
+  { code: "S77", name: "Ghost While", hex: "#EFEFEF", brand: "ARTKAL" },
+  { code: "S78", name: "Ash Grey", hex: "#D1D1D1", brand: "ARTKAL" },
+  { code: "S79", name: "Light Gray", hex: "#BBBCBC", brand: "ARTKAL" },
+  { code: "S80", name: "Dark Olive", hex: "#999B30", brand: "ARTKAL" },
+  { code: "S81", name: "Deer", hex: "#CDB276", brand: "ARTKAL" },
+  { code: "S82", name: "Clay", hex: "#BB8F63", brand: "ARTKAL" },
+  { code: "S83", name: "Sienna", hex: "#B86125", brand: "ARTKAL" },
+  { code: "S84", name: "Deep Chestnut", hex: "#AA5761", brand: "ARTKAL" },
+  { code: "S85", name: "Red Wine", hex: "#5C131B", brand: "ARTKAL" },
+  { code: "S86", name: "Goldenrod", hex: "#F7BD1B", brand: "ARTKAL" },
+  { code: "S87", name: "Coral Red", hex: "#E68082", brand: "ARTKAL" },
+  { code: "S88", name: "Dark Pink", hex: "#DA1884", brand: "ARTKAL" },
+  { code: "S89", name: "Charcoal Gray", hex: "#484955", brand: "ARTKAL" },
+  { code: "S90", name: "Pastel Orange", hex: "#FFC50B", brand: "ARTKAL" },
+  { code: "S91", name: "Brunswick Green", hex: "#183028", brand: "ARTKAL" },
+  { code: "S92", name: "Dandelion", hex: "#DEB947", brand: "ARTKAL" },
+  { code: "S93", name: "Pale Skin", hex: "#DAB698", brand: "ARTKAL" },
+  { code: "S94", name: "Warm Blush", hex: "#F4A999", brand: "ARTKAL" },
+  { code: "S95", name: "Salmon", hex: "#EE7D67", brand: "ARTKAL" },
+  { code: "S96", name: "Apricot", hex: "#F08661", brand: "ARTKAL" },
+  { code: "S97", name: "Papaya", hex: "#D4722A", brand: "ARTKAL" },
+  { code: "S98", name: "Himalaya Blue", hex: "#64ACDF", brand: "ARTKAL" },
+  { code: "S99", name: "Waterfall", hex: "#64C2DC", brand: "ARTKAL" },
+  { code: "S100", name: "Lagoon", hex: "#4F9FB3", brand: "ARTKAL" },
+  { code: "S101", name: "Electric Blue", hex: "#46ADF2", brand: "ARTKAL" },
+  { code: "S102", name: "Pool Blue", hex: "#2272E3", brand: "ARTKAL" },
+  { code: "S103", name: "Caribbian Blue", hex: "#083980", brand: "ARTKAL" },
+  { code: "S104", name: "Deep Water", hex: "#0A668B", brand: "ARTKAL" },
+  { code: "S105", name: "Petrol Blue", hex: "#227B9C", brand: "ARTKAL" },
+  { code: "S106", name: "Wegdewood Blue", hex: "#004E78", brand: "ARTKAL" },
+  { code: "S107", name: "Pond Blue", hex: "#005574", brand: "ARTKAL" },
+  { code: "S108", name: "Seashell Beige", hex: "#CCBE80", brand: "ARTKAL" },
+  { code: "S109", name: "Beige", hex: "#A49350", brand: "ARTKAL" },
+  { code: "S110", name: "Beach Beige", hex: "#9E883C", brand: "ARTKAL" },
+  { code: "S111", name: "Caffe Latté", hex: "#766C2B", brand: "ARTKAL" },
+  { code: "S112", name: "Oaktree Brown", hex: "#877749", brand: "ARTKAL" },
+  { code: "S113", name: "Khaki", hex: "#BAB8A2", brand: "ARTKAL" },
+  { code: "S114", name: "Light Greengray", hex: "#728C54", brand: "ARTKAL" },
+  { code: "S115", name: "Mossy Green", hex: "#7E7C44", brand: "ARTKAL" },
+  { code: "S116", name: "Earth Green", hex: "#64692E", brand: "ARTKAL" },
+  { code: "S117", name: "Sage Green", hex: "#4E582C", brand: "ARTKAL" },
+  { code: "S118", name: "Pinetree Green", hex: "#4A5E2D", brand: "ARTKAL" },
+  { code: "S119", name: "Frosty Blue", hex: "#BEEBE7", brand: "ARTKAL" },
+  { code: "S120", name: "Polar Mint", hex: "#66CC99", brand: "ARTKAL" },
+  { code: "S121", name: "Celadon Green", hex: "#569A83", brand: "ARTKAL" },
+  { code: "S122", name: "Eucalyptus", hex: "#14C25B", brand: "ARTKAL" },
+  { code: "S123", name: "Clover Field", hex: "#58DE4B", brand: "ARTKAL" },
+  { code: "S124", name: "Pooltable Felt", hex: "#04552E", brand: "ARTKAL" },
+  { code: "S125", name: "Snake Green", hex: "#136B5A", brand: "ARTKAL" },
+  { code: "S126", name: "Dark Eucalyptus", hex: "#054641", brand: "ARTKAL" },
+  { code: "S127", name: "Marsmallow Rose", hex: "#D9B6D6", brand: "ARTKAL" },
+  { code: "S128", name: "Light Grape", hex: "#AD62A4", brand: "ARTKAL" },
+  { code: "S129", name: "Rosebud Pink", hex: "#E68CA3", brand: "ARTKAL" },
+  { code: "S130", name: "Fuschia", hex: "#FC81B2", brand: "ARTKAL" },
+  { code: "S131", name: "Candy Violet", hex: "#CABAF7", brand: "ARTKAL" },
+  { code: "S132", name: "Flamingo", hex: "#E8416B", brand: "ARTKAL" },
+  { code: "S133", name: "Pink Plum", hex: "#B7388F", brand: "ARTKAL" },
+  { code: "S134", name: "Amethyst", hex: "#581F7E", brand: "ARTKAL" },
+  { code: "S135", name: "Moonlight Blue", hex: "#8CA3D4", brand: "ARTKAL" },
+  { code: "S136", name: "Summer Rain", hex: "#9A9ACC", brand: "ARTKAL" },
+  { code: "S137", name: "Azur Blue", hex: "#5981C1", brand: "ARTKAL" },
+  { code: "S138", name: "Cornflower Blue", hex: "#4166B0", brand: "ARTKAL" },
+  { code: "S139", name: "Forget Me Not", hex: "#475FAB", brand: "ARTKAL" },
+  { code: "S140", name: "Indigo", hex: "#1644DB", brand: "ARTKAL" },
+  { code: "S141", name: "Horizon Blue", hex: "#3D56A5", brand: "ARTKAL" },
+  { code: "S142", name: "Cobolt", hex: "#0142C3", brand: "ARTKAL" },
+  { code: "S143", name: "Royal Blue", hex: "#25268A", brand: "ARTKAL" },
+  { code: "S144", name: "Marine", hex: "#1A2F6F", brand: "ARTKAL" },
+  { code: "S145", name: "Pale Yellow Moss", hex: "#D3C95D", brand: "ARTKAL" },
+  { code: "S146", name: "Bloodrose Red", hex: "#510918", brand: "ARTKAL" },
+  { code: "S147", name: "Spearmint", hex: "#64B39E", brand: "ARTKAL" },
+  { code: "S148", name: "Mocha", hex: "#634338", brand: "ARTKAL" },
+  { code: "S149", name: "Creme", hex: "#EDD39E", brand: "ARTKAL" },
+  { code: "S150", name: "Iris Violet", hex: "#6963AB", brand: "ARTKAL" },
+  { code: "S151", name: "Forrest Green", hex: "#2B3F1F", brand: "ARTKAL" },
+  { code: "S152", name: "Lilac", hex: "#9791C5", brand: "ARTKAL" },
+  { code: "S153", name: "Pale Lilac", hex: "#C3BDFF", brand: "ARTKAL" },
+  { code: "S154", name: "Sahara Sand", hex: "#F9C898", brand: "ARTKAL" },
+  { code: "S155", name: "Sunkissed Teint", hex: "#CCA47C", brand: "ARTKAL" },
+  { code: "S156", name: "Steel Grey", hex: "#5A6263", brand: "ARTKAL" },
+  { code: "S157", name: "Iron Grey", hex: "#3E4955", brand: "ARTKAL" },
+  { code: "S158", name: "Pepper", hex: "#202830", brand: "ARTKAL" },
+  { code: "S159", name: "Oslo Gray", hex: "#888B8D", brand: "ARTKAL" },
+  { code: "SE01", name: "Moon", hex: "#D7DDDE", brand: "ARTKAL" },
+  { code: "SE02", name: "Raincloud", hex: "#9BB8E3", brand: "ARTKAL" },
+  { code: "SE03", name: "Winter", hex: "#5E8AB4", brand: "ARTKAL" },
+  { code: "SE04", name: "Tide", hex: "#6AD1E3", brand: "ARTKAL" },
+  { code: "SE05", name: "Aquamarine", hex: "#2CD5C4", brand: "ARTKAL" },
+  { code: "SE06", name: "Neptune", hex: "#147BD1", brand: "ARTKAL" },
+  { code: "SE07", name: "Rose Quartz", hex: "#C2AFC9", brand: "ARTKAL" },
+  { code: "SE08", name: "Mauve", hex: "#9B7793", brand: "ARTKAL" },
+  { code: "SE09", name: "Dark Mauve", hex: "#693C5E", brand: "ARTKAL" },
+  { code: "SE10", name: "Wild Berry", hex: "#C964CF", brand: "ARTKAL" },
+  { code: "SE11", name: "Sugar Plum", hex: "#8C1AC7", brand: "ARTKAL" },
+  { code: "SE12", name: "Desert", hex: "#FFB25B", brand: "ARTKAL" },
+  { code: "SE13", name: "Peanut", hex: "#E6A65D", brand: "ARTKAL" },
+  { code: "SE14", name: "Toffee", hex: "#D38235", brand: "ARTKAL" },
+  { code: "SE15", name: "Bark", hex: "#C16C18", brand: "ARTKAL" },
+  { code: "SE16", name: "Extended Light Pink", hex: "#F5B6CD", brand: "ARTKAL" },
+  { code: "SE17", name: "Extended Maroon", hex: "#5D2A2C", brand: "ARTKAL" },
+  { code: "SG1", name: "Glow Yellow", hex: "#EEF6E5", brand: "ARTKAL" },
+  { code: "SG2", name: "Glow Pink", hex: "#F9DDE5", brand: "ARTKAL" },
+  { code: "SG3", name: "Glow Blue", hex: "#D8F7F9", brand: "ARTKAL" },
+  { code: "SG4", name: "SG4", hex: "#D0B2E9", brand: "ARTKAL" },
+  { code: "SG5", name: "SG5", hex: "#F7BD85", brand: "ARTKAL" },
+  { code: "SG6", name: "SG6", hex: "#DAFCDB", brand: "ARTKAL" },
+  { code: "SG7", name: "SG7", hex: "#C85E66", brand: "ARTKAL" },
+  { code: "SN1", name: "Neon Orange", hex: "#FF8921", brand: "ARTKAL" },
+  { code: "SN2", name: "Neon Green", hex: "#0DBF39", brand: "ARTKAL" },
+  { code: "SN3", name: "Neon Yellow", hex: "#F3FF0D", brand: "ARTKAL" },
+  { code: "SN4", name: "Neon Rose", hex: "#FF3472", brand: "ARTKAL" },
+  { code: "SP1", name: "Pearlescent Green", hex: "#BAF57B", brand: "ARTKAL" },
+  { code: "SP2", name: "Pearlescent Tangerine", hex: "#FF8A50", brand: "ARTKAL" },
+  { code: "SP3", name: "Pearlescent Orange", hex: "#FFC445", brand: "ARTKAL" },
+  { code: "SP4", name: "Pearlescent Pink", hex: "#FFB4D6", brand: "ARTKAL" },
+  { code: "SP5", name: "Pearlescent Red", hex: "#B6284D", brand: "ARTKAL" },
+  { code: "SP6", name: "Pearlescent Blue", hex: "#1D1F95", brand: "ARTKAL" },
+  { code: "SP7", name: "Pearlescent Purple", hex: "#5C2086", brand: "ARTKAL" },
+  { code: "SP8", name: "Pearlescent White", hex: "#FFFFFF", brand: "ARTKAL" },
+  { code: "ST1", name: "Transparent", hex: "#FFFFFF", brand: "ARTKAL" },
+  { code: "ST2", name: "Transparent Pink", hex: "#FF71D2", brand: "ARTKAL" },
+  { code: "ST3", name: "Transparent Tangering", hex: "#FF8324", brand: "ARTKAL" },
+  { code: "ST4", name: "Transparent Yellow", hex: "#F2FF20", brand: "ARTKAL" },
+  { code: "ST5", name: "Transparent Green", hex: "#1DD14A", brand: "ARTKAL" },
+  { code: "ST6", name: "Transparent Purple", hex: "#B083E7", brand: "ARTKAL" },
+  { code: "ST7", name: "ST7", hex: "#171717", brand: "ARTKAL" },
+  { code: "ST8", name: "ST8", hex: "#3D0304", brand: "ARTKAL" },
+  { code: "SUV1", name: "SUV1", hex: "#FA55AF", brand: "ARTKAL" },
+  { code: "SUV2", name: "SUV2", hex: "#FFD47F", brand: "ARTKAL" },
+  { code: "SUV3", name: "SUV3", hex: "#7F61E4", brand: "ARTKAL" },
+  { code: "SUV4", name: "SUV4", hex: "#E352CE", brand: "ARTKAL" },
+  { code: "SL5", name: "Glitter Purple", hex: "#7E58BA", brand: "ARTKAL" },
+  { code: "SL6", name: "Glitter Clear", hex: "#F5FAFD", brand: "ARTKAL" },
+  { code: "SD1", name: "Black & White Stripe", hex: "#191919", brand: "ARTKAL" },
+  { code: "SD2", name: "Grey & White Stripe", hex: "#8A8D91", brand: "ARTKAL" },
+  { code: "SD3", name: "Light Blue Stripe", hex: "#4696FA", brand: "ARTKAL" },
+  { code: "SD4", name: "Blue & White Stripe", hex: "#4B91FA", brand: "ARTKAL" },
+  { code: "SD5", name: "Green Stripe", hex: "#288C28", brand: "ARTKAL" },
+  { code: "SD6", name: "Turquoise Stripe", hex: "#46BEB4", brand: "ARTKAL" },
+  { code: "SD7", name: "Red & White Stripe", hex: "#E12D32", brand: "ARTKAL" },
+  { code: "SD8", name: "Pink Stripe", hex: "#FA50AA", brand: "ARTKAL" },
+  { code: "SD9", name: "Purple Stripe", hex: "#AF7DDC", brand: "ARTKAL" },
+  { code: "SD10", name: "Yellow Stripe", hex: "#E1BE05", brand: "ARTKAL" },
+  { code: "SD11", name: "Orange & White Stripe", hex: "#FF691E", brand: "ARTKAL" },
+  { code: "SD12", name: "Dark Green Stripe", hex: "#328C78", brand: "ARTKAL" },
+  { code: "SU1", name: "UV - Rose", hex: "#FA64B4", brand: "ARTKAL" },
+  { code: "SU2", name: "UV - Yellow", hex: "#F0C882", brand: "ARTKAL" },
+  { code: "SU3", name: "UV - Purple", hex: "#8255D7", brand: "ARTKAL" },
+  { code: "SU4", name: "UV - Pink", hex: "#E346C8", brand: "ARTKAL" },
 ];
+const BASE_COLORS = COLORS.slice(0, 8);
 
 const BG = '#F7EFE2';
 const INK = '#2B2117';
@@ -69,7 +594,7 @@ const cell = boardSize / N;
 const boardX = (W - boardSize) / 2;
 const boardY = Math.max(SAFE_TOP + 68, 82);
 const paletteY = boardY + boardSize + 34;
-const paletteItem = (W - 32) / COLORS.length;
+const paletteItem = (W - 32) / BASE_COLORS.length;
 const toolbarY = H - 80;
 const toolbarH = 44;
 const toolbarItem = (W - 36) / 6;
@@ -96,7 +621,10 @@ let dragPiece = -1;
 let dragCamera = false;
 let pieceScreens = [];
 let pieceHistory = [];
-let overlay = null; // 'menu' | 'inventory'
+let overlay = null; // 'menu' | 'inventory' | 'colors'
+let colorResults = [];
+let colorQuery = '';
+let colorCards = [];
 let rowMode = false;
 let rowFocus = 0;
 let stock = COLORS.map(() => 0);
@@ -764,13 +1292,18 @@ function draw() {
   ctx.fillStyle = MUTED;
   ctx.font = '9px sans-serif';
   ctx.fillText(eraser ? '橡皮模式：点豆子收走' : '点一下换色，点板上放豆', 48, paletteY - 11);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = CORAL;
+  ctx.font = 'bold 9px sans-serif';
+  ctx.fillText(`当前 ${COLORS[selected] ? COLORS[selected].code : 'P08'}`, W - 16, paletteY - 11);
+  ctx.textAlign = 'left';
 
-  for (let i = 0; i < COLORS.length; i++) {
+  for (let i = 0; i < BASE_COLORS.length; i++) {
     const cx = 16 + paletteItem * (i + 0.5);
     const cy = paletteY + 12;
     ctx.beginPath();
     ctx.arc(cx, cy, 13, 0, Math.PI * 2);
-    ctx.fillStyle = COLORS[i].hex;
+    ctx.fillStyle = BASE_COLORS[i].hex;
     ctx.fill();
     if (selected === i && !eraser) {
       ctx.beginPath();
@@ -782,7 +1315,7 @@ function draw() {
     ctx.textAlign = 'center';
     ctx.fillStyle = MUTED;
     ctx.font = '8px sans-serif';
-    ctx.fillText(COLORS[i].code, cx, cy + 27);
+    ctx.fillText(BASE_COLORS[i].code, cx, cy + 27);
     ctx.textAlign = 'left';
   }
 
@@ -817,13 +1350,14 @@ function drawOverlay() {
   ctx.fillRect(0, 0, W, H);
   if (overlay === 'menu') drawMenu();
   else if (overlay === 'inventory') drawInventory();
+  else if (overlay === 'colors') drawColors();
 }
 
 function drawMenu() {
   const x = W / 2 - 140;
   const y = SAFE_TOP + 120;
   const w = 280;
-  const h = 408;
+  const h = 458;
   roundRect(x, y, w, h, 18);
   ctx.fillStyle = BG;
   ctx.fill();
@@ -835,29 +1369,30 @@ function drawMenu() {
   ctx.fillText('豆屿菜单', x + 20, y + 38);
   ctx.fillStyle = MUTED;
   ctx.font = '10px sans-serif';
-  ctx.fillText('拼板、豆仓、按行、导出', x + 20, y + 55);
+  ctx.fillText('拼板、豆仓、按行、品牌色', x + 20, y + 55);
 
   const items = [
     ['豆仓 / 缺色', '查当前用豆和库存'],
     ['按行跟做', '一次亮一行'],
     ['保存图片', '把当前画面存相册'],
     ['导出 A4 图纸', '生成 29×29 图纸并保存'],
+    ['品牌色号 532', '搜 Hama / Perler / Artkal'],
     ['分享小游戏', '把豆屿发给朋友'],
     ['关闭', '回到拼板'],
   ];
   for (let i = 0; i < items.length; i++) {
-    const iy = y + 78 + i * 50;
-    roundRect(x + 16, iy, w - 32, 40, 10);
-    ctx.fillStyle = i === 5 ? 'rgba(255,255,255,0.45)' : '#FFFDF8';
+    const iy = y + 78 + i * 48;
+    roundRect(x + 16, iy, w - 32, 38, 10);
+    ctx.fillStyle = i === 6 ? 'rgba(255,255,255,0.45)' : '#FFFDF8';
     ctx.fill();
     ctx.strokeStyle = 'rgba(53,41,27,0.10)';
     ctx.stroke();
-    ctx.fillStyle = i === 5 ? MUTED : INK;
+    ctx.fillStyle = i === 6 ? MUTED : INK;
     ctx.font = 'bold 12px sans-serif';
-    ctx.fillText(items[i][0], x + 28, iy + 17);
+    ctx.fillText(items[i][0], x + 28, iy + 16);
     ctx.fillStyle = MUTED;
     ctx.font = '9px sans-serif';
-    ctx.fillText(items[i][1], x + 28, iy + 31);
+    ctx.fillText(items[i][1], x + 28, iy + 30);
   }
 }
 
@@ -870,6 +1405,159 @@ function shareGame() {
     title: '豆屿 · 拼豆小岛',
     imageUrl: '',
   });
+}
+
+function openColorSearch() {
+  if (!wx.showModal) {
+    toast('当前环境不支持搜色号');
+    return;
+  }
+  wx.showModal({
+    title: '品牌色号',
+    content: '',
+    editable: true,
+    placeholderText: 'P08 / H05 / 蓝 / Pink',
+    success(res) {
+      if (!res.confirm) return;
+      const q = String(res.content || '').trim().toLowerCase();
+      const hits = [];
+      for (let i = 0; i < COLORS.length; i++) {
+        const c = COLORS[i];
+        if (!q || c.code.toLowerCase().includes(q) || String(c.name || '').toLowerCase().includes(q)) {
+          hits.push(i);
+        }
+        if (hits.length >= 20) break;
+      }
+      if (!hits.length) {
+        toast('没有找到这个色号');
+        return;
+      }
+      colorQuery = q || '常用';
+      colorResults = hits;
+      overlay = 'colors';
+      draw();
+    },
+  });
+}
+
+function drawColors() {
+  const x = 16;
+  const y = SAFE_TOP + 76;
+  const w = W - 32;
+  const h = H - SAFE_TOP - 150;
+  roundRect(x, y, w, h, 16);
+  ctx.fillStyle = BG;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.12)';
+  ctx.stroke();
+
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillText('品牌色号', x + 16, y + 32);
+  ctx.fillStyle = MUTED;
+  ctx.font = '9px sans-serif';
+  ctx.fillText(`532 色 · 当前搜索「${colorQuery}」`, x + 16, y + 49);
+  roundRect(x + w - 62, y + 14, 46, 26, 8);
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.12)';
+  ctx.stroke();
+  ctx.fillStyle = MUTED;
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('关闭', x + w - 39, y + 31);
+  ctx.textAlign = 'left';
+
+  colorCards = [];
+  const cols = 4;
+  const gap = 6;
+  const cardW = (w - 32 - gap * (cols - 1)) / cols;
+  const cardH = 58;
+  for (let i = 0; i < colorResults.length; i++) {
+    const idx = colorResults[i];
+    const col = COLORS[idx];
+    const cx = x + 16 + (i % cols) * (cardW + gap);
+    const cy = y + 64 + Math.floor(i / cols) * (cardH + gap);
+    roundRect(cx, cy, cardW, cardH, 9);
+    ctx.fillStyle = '#FFFDF8';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(53,41,27,0.10)';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx + 17, cy + 19, 10, 0, Math.PI * 2);
+    ctx.fillStyle = col.hex;
+    ctx.fill();
+    ctx.fillStyle = INK;
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText(col.code, cx + 32, cy + 22);
+    ctx.fillStyle = MUTED;
+    ctx.font = '7px sans-serif';
+    const name = String(col.name || '').slice(0, 12);
+    ctx.fillText(name, cx + 8, cy + 42);
+    ctx.fillStyle = MUTED;
+    ctx.font = '7px sans-serif';
+    ctx.fillText(col.brand || '豆屿', cx + 8, cy + 52);
+    colorCards.push({ idx, x: cx, y: cy, w: cardW, h: cardH });
+  }
+
+  roundRect(x + 16, y + h - 42, 96, 28, 8);
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.12)';
+  ctx.stroke();
+  ctx.fillStyle = MUTED;
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('再搜一次', x + 64, y + h - 24);
+  ctx.textAlign = 'left';
+}
+
+function handleColors(x, y) {
+  const px = 16;
+  const w = W - 32;
+  const py = SAFE_TOP + 76;
+  const h = H - SAFE_TOP - 150;
+  if (x >= px + w - 62 && x <= px + w - 16 && y >= py + 14 && y <= py + 40) {
+    overlay = null;
+    draw();
+    return;
+  }
+  if (x >= px + 16 && x <= px + 112 && y >= py + h - 42 && y <= py + h - 14) {
+    overlay = null;
+    openColorSearch();
+    return;
+  }
+  for (const card of colorCards) {
+    if (x >= card.x && x <= card.x + card.w && y >= card.y && y <= card.y + card.h) {
+      selected = card.idx;
+      eraser = false;
+      overlay = null;
+      toast(`已选 ${COLORS[selected].code}`);
+      draw();
+      return;
+    }
+  }
+  if (y > py + h + 10) {
+    overlay = null;
+    draw();
+  }
+}
+
+function inventoryRows() {
+  const used = COLORS.map(() => 0);
+  for (let yy = 0; yy < N; yy++) {
+    for (let xx = 0; xx < N; xx++) {
+      if (board[yy][xx] >= 0) used[board[yy][xx]]++;
+    }
+  }
+  const rows = [];
+  for (let i = 0; i < COLORS.length; i++) {
+    if (used[i] > 0 || stock[i] > 0) rows.push(i);
+  }
+  if (!rows.length) {
+    for (let i = 0; i < Math.min(8, COLORS.length); i++) rows.push(i);
+  }
+  return rows;
 }
 
 function drawInventory() {
@@ -896,9 +1584,13 @@ function drawInventory() {
       if (board[yy][xx] >= 0) used[board[yy][xx]]++;
     }
   }
-  const rowH = Math.min(50, (h - 75) / COLORS.length);
-  for (let i = 0; i < COLORS.length; i++) {
-    const ry = y + 64 + i * rowH;
+  const allRows = inventoryRows();
+  const maxRows = Math.max(1, Math.floor((h - 75) / 37));
+  const rows = allRows.slice(0, maxRows);
+  const rowH = Math.max(26, Math.min(44, (h - 75) / rows.length));
+  for (let ri = 0; ri < rows.length; ri++) {
+    const i = rows[ri];
+    const ry = y + 64 + ri * rowH;
     ctx.beginPath();
     ctx.arc(x + 26, ry + 14, 10, 0, Math.PI * 2);
     ctx.fillStyle = COLORS[i].hex;
@@ -924,6 +1616,11 @@ function drawInventory() {
     ctx.font = 'bold 9px sans-serif';
     ctx.fillText('+100', x + w - 42, ry + 18);
     ctx.textAlign = 'left';
+  }
+  if (allRows.length > rows.length) {
+    ctx.fillStyle = MUTED;
+    ctx.font = '8px sans-serif';
+    ctx.fillText(`还有 ${allRows.length - rows.length} 种颜色，先在这里显示最常用的`, x + 16, y + h - 58);
   }
 
   roundRect(x + 16, y + h - 44, 82, 30, 9);
@@ -1730,19 +2427,28 @@ function buildSheetCanvas() {
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) if (board[y][x] >= 0) used[board[y][x]]++;
   }
-  COLORS.forEach((col, i) => {
-    const ry = ly + 58 + i * 46;
+  const usedRows = [];
+  for (let i = 0; i < COLORS.length; i++) if (used[i] > 0) usedRows.push(i);
+  const legendRows = (usedRows.length ? usedRows : COLORS.slice(0, 8)).slice(0, 14);
+  legendRows.forEach((idx, ri) => {
+    const col = COLORS[idx];
+    const ry = ly + 58 + ri * 40;
     c.fillStyle = col.hex;
     c.fillRect(lx, ry - 16, 28, 28);
     c.fillStyle = ink;
-    c.font = 'bold 17px sans-serif';
+    c.font = 'bold 16px sans-serif';
     c.fillText(codeText(col.code), lx + 38, ry + 6);
     c.fillStyle = muted;
-    c.font = '15px sans-serif';
+    c.font = '14px sans-serif';
     c.textAlign = 'right';
-    c.fillText(`${used[i]} 颗`, lx + 560, ry + 6);
+    c.fillText(`${used[idx]} 颗`, lx + 560, ry + 6);
     c.textAlign = 'left';
   });
+  if (usedRows.length > legendRows.length) {
+    c.fillStyle = muted;
+    c.font = '13px sans-serif';
+    c.fillText(`另有 ${usedRows.length - legendRows.length} 色，见小游戏豆仓`, lx, ly + 58 + legendRows.length * 40 + 14);
+  }
 
   c.fillStyle = '#F4EADB';
   c.fillRect(64, 1360, 2072, 100);
@@ -2043,7 +2749,7 @@ function handle(x, y) {
 
   // palette
   if (!view3d && y >= paletteY - 6 && y <= paletteY + 38) {
-    for (let i = 0; i < COLORS.length; i++) {
+    for (let i = 0; i < BASE_COLORS.length; i++) {
       const cx = 16 + paletteItem * (i + 0.5);
       if (Math.abs(x - cx) <= 20) {
         selected = i;
@@ -2206,9 +2912,9 @@ function handleOverlay(x, y) {
   if (overlay === 'menu') {
     const x0 = W / 2 - 140;
     const y0 = SAFE_TOP + 120;
-    for (let i = 0; i < 6; i++) {
-      const iy = y0 + 78 + i * 50;
-      if (x >= x0 + 16 && x <= x0 + 264 && y >= iy && y <= iy + 40) {
+    for (let i = 0; i < 7; i++) {
+      const iy = y0 + 78 + i * 48;
+      if (x >= x0 + 16 && x <= x0 + 264 && y >= iy && y <= iy + 38) {
         if (i === 0) overlay = 'inventory';
         else if (i === 1) {
           rowMode = true;
@@ -2229,14 +2935,23 @@ function handleOverlay(x, y) {
           exportA4();
         } else if (i === 4) {
           overlay = null;
+          openColorSearch();
+          return;
+        } else if (i === 5) {
+          overlay = null;
           shareGame();
         } else overlay = null;
         draw();
         return;
       }
     }
-    if (y < y0 || y > y0 + 408) overlay = null;
+    if (y < y0 || y > y0 + 458) overlay = null;
     draw();
+    return;
+  }
+
+  if (overlay === 'colors') {
+    handleColors(x, y);
     return;
   }
 
@@ -2245,14 +2960,18 @@ function handleOverlay(x, y) {
     const w = W - 32;
     const h = H - SAFE_TOP - 150;
     const y0 = SAFE_TOP + 76;
-    const rowH = Math.min(50, (h - 75) / COLORS.length);
+    const allRows = inventoryRows();
+    const maxRows = Math.max(1, Math.floor((h - 75) / 37));
+    const rows = allRows.slice(0, maxRows);
+    const rowH = Math.max(26, Math.min(44, (h - 75) / rows.length));
     if (x >= x0 + 16 && x <= x0 + 98 && y >= y0 + h - 44 && y <= y0 + h - 14) {
       overlay = null;
       draw();
       return;
     }
-    for (let i = 0; i < COLORS.length; i++) {
-      const ry = y0 + 64 + i * rowH;
+    for (let ri = 0; ri < rows.length; ri++) {
+      const i = rows[ri];
+      const ry = y0 + 64 + ri * rowH;
       if (x >= x0 + w - 68 && x <= x0 + w - 16 && y >= ry + 1 && y <= ry + 27) {
         stock[i] += 100;
         saveStock();
