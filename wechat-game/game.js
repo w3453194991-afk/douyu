@@ -1937,7 +1937,7 @@ function drawFooter() {
   let text = '29 × 29 标准拼板 · 5mm 中豆 · 豆屿 BEAD ISLE';
   if (view3d) {
     text = gl
-      ? `WebGL 3D 拼装 · ${pieces3d.length} 块零件 · 拖动选中的零件`
+      ? `WebGL 3D 拼装 · ${pieces3d.length} 块零件 · 抬起可叠层`
       : 'Canvas 2.5D 预览 · 完整 3D 待接 WebGL';
   } else if (rowMode) {
     let n = 0;
@@ -2165,6 +2165,34 @@ function renderWebGL() {
       viewMinZ = Math.min(viewMinZ, cell.y + 0.5);
       viewMaxZ = Math.max(viewMaxZ, cell.y + 0.5);
     }
+    if (p.lift > 0.2) {
+      let bMinX = Infinity;
+      let bMaxX = -Infinity;
+      let bMinZ = Infinity;
+      let bMaxZ = -Infinity;
+      for (const cell of p.cells) {
+        const dx = cell.x + 0.5 - p.cx;
+        const dz = cell.y + 0.5 - p.cz;
+        const wx = p.cx + p.ox + dx * ca - dz * sa;
+        const wz = p.cz + p.oz + dx * sa + dz * ca;
+        bMinX = Math.min(bMinX, wx);
+        bMaxX = Math.max(bMaxX, wx);
+        bMinZ = Math.min(bMinZ, wz);
+        bMaxZ = Math.max(bMaxZ, wz);
+      }
+      const bCx = (bMinX + bMaxX) / 2;
+      const bCz = (bMinZ + bMaxZ) / 2;
+      const bW = bMaxX - bMinX + 0.7;
+      const bD = bMaxZ - bMinZ + 0.7;
+      pushBox(verts, bCx, p.lift - 0.07, bCz, bW, 0.12, bD, hexRgb('#252832'));
+      const px = [bMinX + 0.15, bMaxX - 0.15];
+      const pz = [bMinZ + 0.15, bMaxZ - 0.15];
+      for (const sx of px) {
+        for (const sz of pz) {
+          pushBox(verts, sx, p.lift / 2, sz, 0.16, Math.max(0.2, p.lift), 0.16, hexRgb('#6F7684'));
+        }
+      }
+    }
     centers.push({ x: p.cx + p.ox, y: p.lift + 0.4, z: p.cz + p.oz });
   }
 
@@ -2237,7 +2265,8 @@ function draw3DScene() {
       ctx.fillStyle = CORAL;
       ctx.font = 'bold 9px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`零件 ${selectedPiece + 1}/${pieces3d.length}`, p.x, p.y - 30);
+      const layer = Math.round(((pieces3d[selectedPiece] && pieces3d[selectedPiece].lift) || 0) / 0.7) + 1;
+      ctx.fillText(`零件 ${selectedPiece + 1}/${pieces3d.length} · L${layer}`, p.x, p.y - 30);
       ctx.textAlign = 'left';
     }
     ctx.textAlign = 'center';
