@@ -82,6 +82,10 @@ let history = [];
 let view3d = false;
 let angle = -0.38;
 let dragX = null;
+let overlay = null; // 'menu' | 'inventory'
+let rowMode = false;
+let rowFocus = 0;
+let stock = COLORS.map(() => 0);
 
 function save() {
   try {
@@ -102,6 +106,21 @@ function load() {
     if (raw.fused) {
       fused = raw.fused.map((row) => row.split(',').map((v) => v === '1'));
     }
+  } catch (e) {}
+}
+
+function loadStock() {
+  try {
+    const raw = wx.getStorageSync('douyu.game.stock');
+    if (Array.isArray(raw) && raw.length === COLORS.length) {
+      stock = raw.map((n) => Math.max(0, Number(n) || 0));
+    }
+  } catch (e) {}
+}
+
+function saveStock() {
+  try {
+    wx.setStorageSync('douyu.game.stock', stock);
   } catch (e) {}
 }
 
@@ -178,7 +197,15 @@ function draw() {
   ctx.fillText(view3d ? '豆屿 · 立体' : '豆屿', 40, SAFE_TOP + 26);
   ctx.fillStyle = MUTED;
   ctx.font = '11px sans-serif';
-  ctx.fillText(view3d ? '2.5D 预览 · 左右拖动旋转' : '拼豆小岛 · 小游戏版', 40, SAFE_TOP + 43);
+  ctx.fillText(
+    view3d
+      ? '2.5D 预览 · 左右拖动旋转'
+      : rowMode
+        ? `按行 · 第 ${rowFocus + 1} / ${N} 行`
+        : '拼豆小岛 · 小游戏版',
+    40,
+    SAFE_TOP + 43,
+  );
 
   const stat = countBeads();
   ctx.textAlign = 'right';
@@ -190,7 +217,19 @@ function draw() {
   ctx.fillText(stat.f ? `已熨 ${stat.f}` : '点格子放豆', W - 16, SAFE_TOP + 39);
   ctx.textAlign = 'left';
 
-  // save current canvas to album
+  // menu + save
+  roundRect(W - 126, SAFE_TOP + 46, 50, 22, 8);
+  ctx.fillStyle = 'rgba(255,255,255,0.78)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.15)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('菜单', W - 101, SAFE_TOP + 61);
+  ctx.textAlign = 'left';
+
   roundRect(W - 70, SAFE_TOP + 46, 54, 22, 8);
   ctx.fillStyle = 'rgba(255,255,255,0.78)';
   ctx.fill();
@@ -203,6 +242,10 @@ function draw() {
   ctx.fillText('保存', W - 43, SAFE_TOP + 61);
   ctx.textAlign = 'left';
 
+  if (overlay) {
+    drawOverlay();
+    return;
+  }
   if (view3d) {
     draw3DScene();
     drawToolbar();
@@ -252,6 +295,16 @@ function draw() {
     ctx.fillText('点格子，放一颗豆', W / 2, boardY + boardSize / 2);
     ctx.textAlign = 'left';
   }
+
+  if (rowMode) {
+    const fy = boardY + rowFocus * cell;
+    ctx.fillStyle = 'rgba(15,16,20,0.66)';
+    ctx.fillRect(boardX, boardY, boardSize, fy - boardY);
+    ctx.fillRect(boardX, fy + cell, boardSize, boardSize - (fy - boardY) - cell);
+    ctx.strokeStyle = CORAL;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(boardX, fy, boardSize, cell);
+  }
   ctx.restore();
 
   // palette
@@ -284,8 +337,142 @@ function draw() {
   }
 
   // toolbar
-  drawToolbar();
+  if (rowMode) drawRowToolbar();
+  else drawToolbar();
   drawFooter();
+}
+
+function drawRowToolbar() {
+  const labels = ['上一行', '下一行', '退出'];
+  const item = (W - 36) / 3;
+  for (let i = 0; i < 3; i++) {
+    const x = 18 + i * item;
+    const w = item - 6;
+    roundRect(x, toolbarY, w, toolbarH, 10);
+    ctx.fillStyle = i === 2 ? '#FFFFFF' : 'rgba(255,255,255,0.8)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(53,41,27,0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = i === 2 ? MUTED : INK;
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText(labels[i], x + w / 2, toolbarY + 27);
+    ctx.textAlign = 'left';
+  }
+}
+
+function drawOverlay() {
+  ctx.fillStyle = 'rgba(20,18,14,0.46)';
+  ctx.fillRect(0, 0, W, H);
+  if (overlay === 'menu') drawMenu();
+  else if (overlay === 'inventory') drawInventory();
+}
+
+function drawMenu() {
+  const x = W / 2 - 140;
+  const y = SAFE_TOP + 120;
+  const w = 280;
+  const h = 300;
+  roundRect(x, y, w, h, 18);
+  ctx.fillStyle = BG;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.12)';
+  ctx.stroke();
+
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 19px sans-serif';
+  ctx.fillText('豆屿菜单', x + 20, y + 38);
+  ctx.fillStyle = MUTED;
+  ctx.font = '10px sans-serif';
+  ctx.fillText('拼板、豆仓、按行跟做', x + 20, y + 55);
+
+  const items = [
+    ['豆仓 / 缺色', '查当前用豆和库存'],
+    ['按行跟做', '一次亮一行'],
+    ['保存图片', '把当前画面存相册'],
+    ['关闭', '回到拼板'],
+  ];
+  for (let i = 0; i < items.length; i++) {
+    const iy = y + 78 + i * 52;
+    roundRect(x + 16, iy, w - 32, 42, 10);
+    ctx.fillStyle = i === 3 ? 'rgba(255,255,255,0.45)' : '#FFFDF8';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(53,41,27,0.10)';
+    ctx.stroke();
+    ctx.fillStyle = i === 3 ? MUTED : INK;
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText(items[i][0], x + 28, iy + 18);
+    ctx.fillStyle = MUTED;
+    ctx.font = '9px sans-serif';
+    ctx.fillText(items[i][1], x + 28, iy + 32);
+  }
+}
+
+function drawInventory() {
+  const x = 16;
+  const y = SAFE_TOP + 76;
+  const w = W - 32;
+  const h = H - SAFE_TOP - 150;
+  roundRect(x, y, w, h, 16);
+  ctx.fillStyle = BG;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.12)';
+  ctx.stroke();
+
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillText('豆仓 / 缺色', x + 16, y + 32);
+  ctx.fillStyle = MUTED;
+  ctx.font = '9px sans-serif';
+  ctx.fillText('按当前拼板统计；库存点 +100 记一笔', x + 16, y + 49);
+
+  const used = COLORS.map(() => 0);
+  for (let yy = 0; yy < N; yy++) {
+    for (let xx = 0; xx < N; xx++) {
+      if (board[yy][xx] >= 0) used[board[yy][xx]]++;
+    }
+  }
+  const rowH = Math.min(50, (h - 75) / COLORS.length);
+  for (let i = 0; i < COLORS.length; i++) {
+    const ry = y + 64 + i * rowH;
+    ctx.beginPath();
+    ctx.arc(x + 26, ry + 14, 10, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS[i].hex;
+    ctx.fill();
+
+    ctx.fillStyle = INK;
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(`${COLORS[i].code}`, x + 44, ry + 17);
+    ctx.fillStyle = MUTED;
+    ctx.font = '9px sans-serif';
+    ctx.fillText(`用 ${used[i]}`, x + 86, ry + 17);
+    const miss = Math.max(0, used[i] - stock[i]);
+    ctx.fillStyle = miss ? CORAL : MUTED;
+    ctx.fillText(`存 ${stock[i]}${miss ? ` · 缺 ${miss}` : ''}`, x + 132, ry + 17);
+
+    roundRect(x + w - 68, ry + 1, 52, 26, 8);
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(53,41,27,0.14)';
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = INK;
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText('+100', x + w - 42, ry + 18);
+    ctx.textAlign = 'left';
+  }
+
+  roundRect(x + 16, y + h - 44, 82, 30, 9);
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(53,41,27,0.14)';
+  ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = MUTED;
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText('返回', x + 57, y + h - 24);
+  ctx.textAlign = 'left';
 }
 
 function drawToolbar() {
@@ -312,11 +499,14 @@ function drawFooter() {
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(43,33,23,0.42)';
   ctx.font = '9px sans-serif';
-  ctx.fillText(
-    view3d ? 'Canvas 2.5D 预览 · 完整 3D 待接 WebGL' : '29 × 29 标准拼板 · 5mm 中豆 · 豆屿 BEAD ISLE',
-    W / 2,
-    toolbarY - 12,
-  );
+  let text = '29 × 29 标准拼板 · 5mm 中豆 · 豆屿 BEAD ISLE';
+  if (view3d) text = 'Canvas 2.5D 预览 · 完整 3D 待接 WebGL';
+  else if (rowMode) {
+    let n = 0;
+    for (let x = 0; x < N; x++) if (board[rowFocus][x] >= 0) n++;
+    text = `按行跟做 · 第 ${rowFocus + 1} 行 · 本行 ${n} 颗`;
+  }
+  ctx.fillText(text, W / 2, toolbarY - 12);
   ctx.textAlign = 'left';
 }
 
@@ -539,6 +729,18 @@ function loadPhotoPattern(path) {
 }
 
 function handle(x, y) {
+  if (overlay) {
+    handleOverlay(x, y);
+    return;
+  }
+
+  // menu button
+  if (x >= W - 126 && x <= W - 76 && y >= SAFE_TOP + 42 && y <= SAFE_TOP + 72) {
+    overlay = 'menu';
+    draw();
+    return;
+  }
+
   // save button
   if (x >= W - 74 && x <= W - 12 && y >= SAFE_TOP + 42 && y <= SAFE_TOP + 72) {
     saveImage();
@@ -585,6 +787,15 @@ function handle(x, y) {
 
   // toolbar
   if (y >= toolbarY && y <= toolbarY + toolbarH) {
+    if (rowMode) {
+      const item = (W - 36) / 3;
+      const ri = Math.floor((x - 18) / item);
+      if (ri === 0) rowFocus = Math.max(0, rowFocus - 1);
+      else if (ri === 1) rowFocus = Math.min(N - 1, rowFocus + 1);
+      else if (ri === 2) rowMode = false;
+      draw();
+      return;
+    }
     const i = Math.floor((x - 18) / toolbarItem);
     if (i < 0 || i > 5) return;
     if (i === 0) {
@@ -618,19 +829,79 @@ function handle(x, y) {
   }
 }
 
+function handleOverlay(x, y) {
+  if (overlay === 'menu') {
+    const x0 = W / 2 - 140;
+    const y0 = SAFE_TOP + 120;
+    for (let i = 0; i < 4; i++) {
+      const iy = y0 + 78 + i * 52;
+      if (x >= x0 + 16 && x <= x0 + 264 && y >= iy && y <= iy + 42) {
+        if (i === 0) overlay = 'inventory';
+        else if (i === 1) {
+          rowMode = true;
+          view3d = false;
+          overlay = null;
+          rowFocus = N - 1;
+          for (let yy = 0; yy < N; yy++) {
+            if (board[yy].some((c) => c >= 0)) {
+              rowFocus = yy;
+              break;
+            }
+          }
+        } else if (i === 2) {
+          overlay = null;
+          saveImage();
+        } else overlay = null;
+        draw();
+        return;
+      }
+    }
+    if (y < y0 || y > y0 + 300) overlay = null;
+    draw();
+    return;
+  }
+
+  if (overlay === 'inventory') {
+    const x0 = 16;
+    const w = W - 32;
+    const h = H - SAFE_TOP - 150;
+    const y0 = SAFE_TOP + 76;
+    const rowH = Math.min(50, (h - 75) / COLORS.length);
+    if (x >= x0 + 16 && x <= x0 + 98 && y >= y0 + h - 44 && y <= y0 + h - 14) {
+      overlay = null;
+      draw();
+      return;
+    }
+    for (let i = 0; i < COLORS.length; i++) {
+      const ry = y0 + 64 + i * rowH;
+      if (x >= x0 + w - 68 && x <= x0 + w - 16 && y >= ry + 1 && y <= ry + 27) {
+        stock[i] += 100;
+        saveStock();
+        draw();
+        return;
+      }
+    }
+    if (y > y0 + h + 10) {
+      overlay = null;
+      draw();
+    }
+  }
+}
+
 load();
+loadStock();
 draw();
 
 wx.onTouchStart((e) => {
   const t = e.touches && e.touches[0];
   if (!t) return;
-  if (view3d && t.clientY < toolbarY - 6) dragX = t.clientX;
+  if (view3d && !overlay && t.clientY < toolbarY - 6) dragX = t.clientX;
   handle(t.clientX, t.clientY);
 });
 
 if (wx.onTouchMove) {
   wx.onTouchMove((e) => {
-    if (!view3d || dragX == null) return;
+    if (!view3d || overlay || dragX == null) return;
     const t = e.touches && e.touches[0];
     if (!t) return;
     angle += (t.clientX - dragX) * 0.012;
