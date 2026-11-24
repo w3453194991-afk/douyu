@@ -8,6 +8,7 @@ const H = sys.windowHeight;
 const DPR = Math.min(2, sys.pixelRatio || 1);
 const SAFE_TOP = (sys.safeArea && sys.safeArea.top) || 20;
 const SAFE_BOTTOM = sys.safeArea ? sys.safeArea.bottom : H;
+const TABBAR_Y = Math.min(H - 58, Math.max(SAFE_TOP + 500, SAFE_BOTTOM - 58));
 
 const canvas = wx.createCanvas();
 canvas.width = W * DPR;
@@ -636,6 +637,8 @@ let screen = 'home'; // home | studio | gallery | detail | profile
 let token = '';
 let me = null;
 let works = [];
+let homeWorks = [];
+let myWorks = [];
 let worksLoading = false;
 let galleryPage = 0;
 let galleryFilter = 'latest';
@@ -692,13 +695,16 @@ function request(path, method = 'GET', data = null, timeout = 10000) {
   });
 }
 
+let sessionPromise = null;
+
 function ensureSession() {
   if (me && token) return Promise.resolve(me);
+  if (sessionPromise) return sessionPromise;
   try {
     token = wx.getStorageSync('douyu.game.token') || '';
   } catch (e) {}
   const body = token ? { token } : {};
-  return request('/api/session', 'POST', body)
+  sessionPromise = request('/api/session', 'POST', body)
     .then((data) => {
       token = data.token;
       me = data.user;
@@ -707,7 +713,11 @@ function ensureSession() {
       } catch (e) {}
       return me;
     })
-    .catch(() => null);
+    .catch(() => null)
+    .finally(() => {
+      sessionPromise = null;
+    });
+  return sessionPromise;
 }
 
 function apiError(err) {
@@ -1202,9 +1212,10 @@ function drawTabIcon(index, cx, cy, color) {
 
 function drawTabBar(active) {
   tabRects = [];
-  const y = H - 58;
+  const y = TABBAR_Y;
+  const bottom = H - y - 58;
   ctx.fillStyle = '#FFFDF8';
-  ctx.fillRect(0, y, W, 58);
+  ctx.fillRect(0, y, W, 58 + Math.max(0, bottom));
   ctx.strokeStyle = 'rgba(53,41,27,0.10)';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -1242,6 +1253,7 @@ function switchTab(index) {
   } else {
     screen = 'profile';
     draw();
+    loadMyWorks();
   }
 }
 
@@ -1263,6 +1275,26 @@ function homeStartNew() {
   screen = 'studio';
   view3d = false;
   draw();
+}
+
+function loadHomeWorks() {
+  ensureSession()
+    .then(() => request('/api/works?filter=latest'))
+    .then((data) => {
+      homeWorks = (data.works || []).slice(0, 4);
+      if (screen === 'home') draw();
+    })
+    .catch(() => {});
+}
+
+function loadMyWorks() {
+  ensureSession()
+    .then(() => request('/api/works?filter=mine'))
+    .then((data) => {
+      myWorks = data.works || [];
+      if (screen === 'profile') draw();
+    })
+    .catch(() => {});
 }
 
 function drawHome() {
@@ -1383,10 +1415,49 @@ function drawHome() {
     homeRects[`quick${i}`] = { x: qx, y: qy, w: qw, h: 62 };
   }
 
+  const recentY = qy + 78;
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 13px sans-serif';
+  ctx.fillText('最近集市', 16, recentY);
+  ctx.fillStyle = MUTED;
+  ctx.font = '9px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('全部 →', W - 16, recentY);
+  ctx.textAlign = 'left';
+  if (homeWorks.length) {
+    const cw = (W - 38) / 2;
+    for (let i = 0; i < Math.min(2, homeWorks.length); i++) {
+      const w = homeWorks[i];
+      const cx = 16 + i * (cw + 6);
+      const cy = recentY + 12;
+      roundRect(cx, cy, cw, 86, 12);
+      ctx.fillStyle = '#FFFDF8';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(53,41,27,0.08)';
+      ctx.stroke();
+      drawCoverBox(w, cx + 8, cy + 8, 52, 70, 8);
+      ctx.fillStyle = INK;
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(fitText(w.title, cw - 72), cx + 68, cy + 26);
+      ctx.fillStyle = w.price ? CORAL : MUTED;
+      ctx.font = 'bold 8px sans-serif';
+      ctx.fillText(w.price ? `${w.price} 豆币` : '免费', cx + 68, cy + 44);
+      homeRects[`recent${i}`] = { x: cx, y: cy, w: cw, h: 86 };
+    }
+  } else {
+    roundRect(16, recentY + 12, W - 32, 64, 12);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fill();
+    ctx.fillStyle = MUTED;
+    ctx.font = '10px sans-serif';
+    ctx.fillText('去集市看看岛上其他作品', 30, recentY + 48);
+  }
+  homeRects.recentAll = { x: W - 78, y: recentY - 16, w: 62, h: 28 };
+
   ctx.fillStyle = 'rgba(43,33,23,0.38)';
   ctx.font = '9px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('一颗一颗，熨成一座岛。', W / 2, H - 76);
+  ctx.fillText('一颗一颗，熨成一座岛。', W / 2, TABBAR_Y - 22);
   ctx.textAlign = 'left';
   drawTabBar(0);
 }
@@ -1427,7 +1498,7 @@ function drawProfile() {
   const stats = [
     [String(stat.n), '当前豆子'],
     [String(me ? me.points : 0), '豆币'],
-    [String((me && me.worksCount) || (me ? 0 : 0)), '作品'],
+    [String(myWorks.length), '作品'],
   ];
   for (let i = 0; i < 3; i++) {
     const sx = 32 + i * ((W - 64) / 3);
@@ -1465,6 +1536,36 @@ function drawProfile() {
     profileRects[`action${i}`] = { x: 16, y: ay, w: W - 32, h: 48 };
   }
 
+  const myY = SAFE_TOP + 416;
+  ctx.fillStyle = INK;
+  ctx.font = 'bold 13px sans-serif';
+  ctx.fillText('我的作品', 16, myY);
+  if (myWorks.length) {
+    const cw = (W - 38) / 2;
+    for (let i = 0; i < Math.min(2, myWorks.length); i++) {
+      const w = myWorks[i];
+      const cx = 16 + i * (cw + 6);
+      const cy = myY + 12;
+      roundRect(cx, cy, cw, 82, 12);
+      ctx.fillStyle = '#FFFDF8';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(53,41,27,0.08)';
+      ctx.stroke();
+      drawCoverBox(w, cx + 8, cy + 8, 48, 66, 8);
+      ctx.fillStyle = INK;
+      ctx.font = 'bold 9px sans-serif';
+      ctx.fillText(fitText(w.title, cw - 66), cx + 62, cy + 28);
+      ctx.fillStyle = MUTED;
+      ctx.font = '8px sans-serif';
+      ctx.fillText(`${w.beadCount || 0} 颗`, cx + 62, cy + 45);
+      profileRects[`my${i}`] = { x: cx, y: cy, w: cw, h: 82 };
+    }
+  } else {
+    ctx.fillStyle = MUTED;
+    ctx.font = '9px sans-serif';
+    ctx.fillText('还没有发布作品，去工位拼一块吧', 16, myY + 22);
+  }
+
   drawTabBar(3);
 }
 
@@ -1493,6 +1594,18 @@ function handleHome(x, y) {
     else draw();
     return;
   }
+  if (hit(homeRects.recent0) && homeWorks[0]) {
+    openDetail(homeWorks[0].id);
+    return;
+  }
+  if (hit(homeRects.recent1) && homeWorks[1]) {
+    openDetail(homeWorks[1].id);
+    return;
+  }
+  if (hit(homeRects.recentAll)) {
+    switchTab(2);
+    return;
+  }
   handleTabBar(x, y);
 }
 
@@ -1510,6 +1623,14 @@ function handleProfile(x, y) {
   }
   if (hit(profileRects.action2)) {
     homeStartNew();
+    return;
+  }
+  if (hit(profileRects.my0) && myWorks[0]) {
+    openDetail(myWorks[0].id);
+    return;
+  }
+  if (hit(profileRects.my1) && myWorks[1]) {
+    openDetail(myWorks[1].id);
     return;
   }
   handleTabBar(x, y);
@@ -1792,7 +1913,6 @@ function shareGame() {
   }
   wx.shareAppMessage({
     title: '豆屿 · 拼豆小岛',
-    imageUrl: '',
   });
 }
 
@@ -2135,6 +2255,7 @@ function drawGallery() {
     ctx.textAlign = 'center';
     ctx.fillText('正在打开集市…', W / 2, H * 0.45);
     ctx.textAlign = 'left';
+    drawTabBar(2);
     return;
   }
   if (!works.length) {
@@ -2143,10 +2264,11 @@ function drawGallery() {
     ctx.textAlign = 'center';
     ctx.fillText(galleryFilter === 'collected' ? '还没有收藏作品' : '集市还没有作品', W / 2, H * 0.45);
     ctx.textAlign = 'left';
+    drawTabBar(2);
     return;
   }
 
-  const list = works.slice(galleryPage * 8, galleryPage * 8 + 8);
+  const list = works.slice(galleryPage * 6, galleryPage * 6 + 6);
   for (let i = 0; i < list.length; i++) {
     const w = list[i];
     const r = galleryCard(i);
@@ -2164,8 +2286,8 @@ function drawGallery() {
     ctx.textAlign = 'left';
   }
 
-  if (works.length > 8) {
-    const y = H - 56;
+  if (works.length > 6) {
+    const y = TABBAR_Y - 42;
     roundRect(16, y, 78, 30, 9);
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.fill();
@@ -2176,10 +2298,11 @@ function drawGallery() {
     roundRect(W - 94, y, 78, 30, 9);
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.fill();
-    ctx.fillStyle = galleryPage < Math.ceil(works.length / 8) - 1 ? INK : MUTED;
+    ctx.fillStyle = galleryPage < Math.ceil(works.length / 6) - 1 ? INK : MUTED;
     ctx.fillText('下一页', W - 55, y + 19);
     ctx.textAlign = 'left';
   }
+  drawTabBar(2);
 }
 
 function detailRects() {
@@ -3307,8 +3430,9 @@ function handle(x, y) {
 }
 
 function handleGallery(x, y) {
+  if (handleTabBar(x, y)) return;
   if (x >= 16 && x <= 68 && y >= SAFE_TOP + 12 && y <= SAFE_TOP + 42) {
-    screen = 'studio';
+    screen = 'home';
     draw();
     return;
   }
@@ -3328,7 +3452,7 @@ function handleGallery(x, y) {
       return;
     }
   }
-  const list = works.slice(galleryPage * 8, galleryPage * 8 + 8);
+  const list = works.slice(galleryPage * 6, galleryPage * 6 + 6);
   for (let i = 0; i < list.length; i++) {
     const r = galleryCard(i);
     if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
@@ -3336,14 +3460,14 @@ function handleGallery(x, y) {
       return;
     }
   }
-  if (works.length > 8) {
-    const by = H - 56;
+  if (works.length > 6) {
+    const by = TABBAR_Y - 42;
     if (y >= by && y <= by + 30) {
       if (x >= 16 && x <= 94) {
         galleryPage = Math.max(0, galleryPage - 1);
         draw();
       } else if (x >= W - 94 && x <= W - 16) {
-        galleryPage = Math.min(Math.ceil(works.length / 8) - 1, galleryPage + 1);
+        galleryPage = Math.min(Math.ceil(works.length / 6) - 1, galleryPage + 1);
         draw();
       }
     }
@@ -3458,6 +3582,8 @@ ensureSession()
     if (screen === 'home' || screen === 'profile') draw();
   })
   .catch(() => {});
+loadHomeWorks();
+loadMyWorks();
 draw();
 
 wx.onTouchStart((e) => {
