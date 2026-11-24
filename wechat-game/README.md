@@ -84,6 +84,35 @@ const API_BASE = 'http://127.0.0.1:8787';
 
 这些都还要在 Canvas / WebGL / `wx.request` 里逐步移植。
 
+## 常见报错
+
+### `worker path empty`
+
+这是开发者工具「多帧运行时」在没有配置 Worker 时触发的。项目已把 `project.config.json` 的 `useMultiFrameRuntime` 改成 `false`；如果还报：
+
+1. 详情 → 本地设置 → 取消勾选「多帧运行时」
+2. 删除项目目录里的 `project.private.config.json`
+3. 重新导入 `wechat-game/`，项目类型选「小游戏」
+4. 点「编译」，不要只热重载
+
+### `game.json: 未找到`
+
+当前导入的是**小程序**工程，不是小游戏。要导入 `wechat-game/`，类型选「小游戏」。
+
+### 页面不存在 / 冰箱对对碰
+
+AppID 用错了。要换成你自己的**小游戏 AppID**；代码不能改 AppID 对应的游戏名。
+
+## 和小程序界面的区别
+
+`wechat-game/` 是原生小游戏（`game.js` + Canvas），不是小程序，所以：
+
+- 不能用 `web-view`
+- 不能直接加载 `src/mini/` 的 React H5 界面
+- 现在的小游戏界面是 Canvas 重写的版本，只能做到风格接近，不能像素级一样
+
+如果你要 `wechat-mini/` 那个完整 H5 竖屏界面，必须用**小程序 AppID** 导入 `wechat-mini/`；小游戏账号无法使用 `web-view`。
+
 ## 导入开发者工具
 
 1. 打开微信开发者工具
