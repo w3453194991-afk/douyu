@@ -7,6 +7,8 @@ import { AssemblyView } from '../components/AssemblyView';
 import { MiniNav, MiniSheet, MiniPieceThumb } from './ui';
 import { RowBuild } from '../components/RowBuild';
 import { PALETTE, colorInfo } from '../../shared/palette.mjs';
+import { BRANDS } from '../../shared/brands.mjs';
+import { beadCode } from '../lib/beadCode';
 import { guideProgress, pieceBounds } from '../lib/scene';
 import type { Tool } from '../types';
 
@@ -17,6 +19,10 @@ const TOOLS: Array<{ id: Tool; label: string; icon: IconName }> = [
   { id: 'select', label: '框选', icon: 'select' },
   { id: 'pan', label: '移板', icon: 'hand' },
 ];
+
+const BRAND_COLORS = Object.values(BRANDS).flatMap((b: any) =>
+  b.colors.map((c: any) => ({ ...c, brand: b.id, brandLabel: b.label })),
+);
 
 type Sheet = 'color' | 'pieces' | 'guide' | 'menu' | 'confirm' | 'row' | null;
 
@@ -64,13 +70,29 @@ export function MiniStudio({
   const setShowGuide = useStudio((s) => s.setShowGuide);
   const showBoards = useStudio((s) => s.showBoards);
   const setShowBoards = useStudio((s) => s.setShowBoards);
+  const showCodes = useStudio((s) => s.showCodes);
+  const setShowCodes = useStudio((s) => s.setShowCodes);
   const toast = useApp((s) => s.toast);
 
   const [sheet, setSheet] = useState<Sheet>(null);
+  const [colorQuery, setColorQuery] = useState('');
 
   const loose = project.loose.length;
   const pieces = project.pieces;
   const info = colorInfo(color);
+  const currentCode = beadCode(color);
+  const cq = colorQuery.trim().toLowerCase();
+  const colorResults = cq
+    ? [...PALETTE.map((c) => ({ ...c, brand: 'douyu', brandLabel: '豆屿' })), ...BRAND_COLORS]
+        .filter(
+          (c: any) =>
+            c.code.toLowerCase().includes(cq) ||
+            String(c.name).toLowerCase().includes(cq) ||
+            c.hex.toLowerCase().includes(cq) ||
+            c.brandLabel.toLowerCase().includes(cq),
+        )
+        .slice(0, 80)
+    : PALETTE.map((c) => ({ ...c, brand: 'douyu', brandLabel: '豆屿' }));
   const progress = project.guide
     ? guideProgress(project.guide, project.loose, project.pieces)
     : null;
@@ -210,23 +232,47 @@ export function MiniStudio({
         <div className="mini-color-current">
           <span className="mini-color-big" style={{ background: color }} />
           <div>
-            <b>{info.name}</b>
+            <b>{currentCode.name || info.name}</b>
             <span>
-              {info.code} · 36 色
+              {currentCode.approx ? '≈' : ''}
+              {currentCode.code} · 36 色 + 全品牌
             </span>
           </div>
         </div>
+        <div className="mini-color-tools">
+          <label className="mini-color-search">
+            <input
+              value={colorQuery}
+              onChange={(e) => setColorQuery(e.target.value)}
+              placeholder="搜编号：P05 / H02 / S01"
+              aria-label="搜索豆子编号"
+            />
+            {colorQuery && <button onClick={() => setColorQuery('')}>×</button>}
+          </label>
+          <button
+            className={`mini-code-toggle ${showCodes ? 'on' : ''}`}
+            onClick={() => setShowCodes(!showCodes)}
+          >
+            编号{showCodes ? '开' : '关'}
+          </button>
+        </div>
         <div className="mini-color-grid">
-          {PALETTE.map((c) => (
+          {colorResults.map((c: any) => (
             <button
-              key={c.hex}
+              key={`${c.brand}-${c.code}-${c.hex}`}
               className={`mini-color ${c.hex.toLowerCase() === color.toLowerCase() ? 'on' : ''}`}
               style={{ background: c.hex }}
-              title={`${c.name} · ${c.code}`}
+              title={`${c.brandLabel} · ${c.code} ${c.name}`}
               onClick={() => setColor(c.hex)}
-            />
+            >
+              <em>{c.code}</em>
+            </button>
           ))}
+          {!colorResults.length && <span className="mini-color-none">没找到这个编号</span>}
         </div>
+        {cq && colorResults.length > 0 && (
+          <p className="mini-color-note">找到 {colorResults.length} 色，编号会显示在豆子上</p>
+        )}
         <div className="mini-brush">
           <span>笔刷大小</span>
           <div className="mini-brush-group">

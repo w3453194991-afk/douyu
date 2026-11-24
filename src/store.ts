@@ -85,6 +85,7 @@ type StudioState = {
   ironFx: { nonce: number; count: number } | null;
   showGuide: boolean;
   showBoards: boolean;
+  showCodes: boolean;
   focusRow: number | null;
   savedAt: number | null;
   actionDirty: boolean;
@@ -129,6 +130,7 @@ type StudioState = {
   discardGuide: () => void;
   setShowGuide: (show: boolean) => void;
   setShowBoards: (show: boolean) => void;
+  setShowCodes: (show: boolean) => void;
   setFocusRow: (row: number | null) => void;
 
   focusContent: () => void;
@@ -170,6 +172,7 @@ export const useStudio = create<StudioState>()((set, get) => ({
   ironFx: null,
   showGuide: true,
   showBoards: false,
+  showCodes: true,
   focusRow: null,
   savedAt: null,
   actionDirty: false,
@@ -634,6 +637,7 @@ export const useStudio = create<StudioState>()((set, get) => ({
 
   setShowGuide: (show) => set({ showGuide: show }),
   setShowBoards: (show) => set({ showBoards: show }),
+  setShowCodes: (show) => set({ showCodes: show }),
   setFocusRow: (row) => set({ focusRow: row }),
 
   focusContent: () => set({ focus: { kind: 'content', nonce: Date.now() } }),

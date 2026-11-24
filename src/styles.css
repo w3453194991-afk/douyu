@@ -6512,3 +6512,89 @@ kbd {
   gap: 2px;
   font-size: 8px;
 }
+
+/* 色卡搜索 / 编号 */
+.palette-search {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 1 188px;
+  min-width: 112px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: #fffdf8;
+}
+.palette-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 9px;
+  color: var(--ink);
+}
+.palette-search input::placeholder {
+  color: var(--ink-3);
+  font-size: 8px;
+}
+.palette-search button {
+  flex: none;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--ink-3);
+}
+.palette-code-toggle {
+  flex: none;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: #fffdf8;
+  color: var(--ink-3);
+  font-size: 8.5px;
+  white-space: nowrap;
+}
+.palette-code-toggle.on {
+  color: var(--accent-deep);
+  border-color: rgba(224, 88, 47, 0.35);
+  background: var(--accent-soft);
+}
+.swatches {
+  grid-template-rows: 34px;
+  gap: 5px;
+}
+.swatch {
+  align-self: start;
+  overflow: visible;
+}
+.swatch em {
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  transform: translateX(-50%);
+  font-family: var(--font-round);
+  font-size: 5.5px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--ink-3);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.swatch.on em {
+  color: var(--ink);
+}
+.palette-no-result {
+  padding: 0 8px;
+  font-size: 9px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  align-self: center;
+}
+.palette-search-note {
+  margin-top: 2px;
+  font-size: 8px;
+  color: var(--ink-3);
+}

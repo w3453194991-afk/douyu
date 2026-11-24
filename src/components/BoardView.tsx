@@ -3,6 +3,7 @@ import { useStudio } from '../store';
 import { useApp } from '../appStore';
 import { beadKey, beadsInRect, contentBounds, guideBounds, pieceAt, pieceBounds } from '../lib/scene';
 import { BOARD_BG, drawBead, rgba } from '../lib/render';
+import { beadCode } from '../lib/beadCode';
 import { Icon } from './Icon';
 
 const CELL = 22;
@@ -100,6 +101,7 @@ export function BoardView({
   const selectedPieceId = useStudio((s) => s.selectedPieceId);
   const showGuide = useStudio((s) => s.showGuide);
   const showBoards = useStudio((s) => s.showBoards);
+  const showCodes = useStudio((s) => s.showCodes);
   const setShowBoards = useStudio((s) => s.setShowBoards);
   const focusRow = useStudio((s) => s.focusRow);
   const focus = useStudio((s) => s.focus);
@@ -127,6 +129,7 @@ export function BoardView({
     selectedPieceId,
     showGuide,
     showBoards,
+    showCodes,
     focusRow,
     hover: hoverRef.current,
     hoverPiece: hoverPieceRef.current,
@@ -142,6 +145,7 @@ export function BoardView({
     selectedPieceId,
     showGuide,
     showBoards,
+    showCodes,
     focusRow,
     hover: hoverRef.current,
     hoverPiece: hoverPieceRef.current,
@@ -155,7 +159,7 @@ export function BoardView({
 
   useEffect(() => {
     requestDraw();
-  }, [project, selection, selectedPieceId, showGuide, showBoards, focusRow, tool, color, brush]);
+  }, [project, selection, selectedPieceId, showGuide, showBoards, showCodes, focusRow, tool, color, brush]);
 
   useEffect(() => {
     if (focusRow == null) return;
@@ -453,8 +457,43 @@ export function BoardView({
       }
     };
 
-    const drawBoardGuides = () => {
-      const { showBoards } = latest.current;
+    const drawCodes = () => {
+      const { project, showCodes } = latest.current;
+      if (!showCodes) return;
+      const cp = cellPx();
+      if (cp < 13) return;
+      const v = viewRef.current;
+      const font = Math.max(5.5, Math.min(8, cp * 0.3));
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `700 ${font}px "PingFang SC","Microsoft YaHei",sans-serif`;
+      const label = (x: number, y: number, hex: string) => {
+        if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+        const code = beadCode(hex).code;
+        if (!code) return;
+        const sx = (x + 0.5) * cp + v.tx;
+        const sy = (y + 0.5) * cp + v.ty;
+        if (sx < -30 || sy < -20 || sx > v.w + 30 || sy > v.h + 20) return;
+        const n = parseInt(hex.slice(1), 16);
+        const bright = (((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000;
+        const light = bright > 155;
+        ctx.lineWidth = Math.max(1.4, font * 0.34);
+        ctx.strokeStyle = light ? 'rgba(255,255,255,0.78)' : 'rgba(16,16,18,0.68)';
+        ctx.strokeText(code, sx, sy);
+        ctx.fillStyle = light ? '#17181d' : '#fffdf8';
+        ctx.fillText(code, sx, sy);
+      };
+      for (const b of project.loose) label(b.x, b.y, b.c);
+      for (const piece of project.pieces) {
+        for (const b of piece.beads) {
+          label(piece.pos[0] + b.x, piece.pos[1] + b.y, b.c);
+        }
+      }
+      ctx.restore();
+    };
+
+    const drawBoardGuides = () => {      const { showBoards } = latest.current;
       if (!showBoards) return;
       const v = viewRef.current;
       const cp = cellPx();
@@ -546,6 +585,7 @@ export function BoardView({
       drawLoose();
       drawPieces();
       drawBoardGuides();
+      drawCodes();
       drawRowFocus();
       drawOverlay();
     };
