@@ -548,8 +548,7 @@ function sleep(ms) {
 }
 
 async function cdpRenderPage(pageUrl, outPath, profile) {
-  const port = 9300 + Math.floor(Math.random() * 500);
-  const child = spawn(
+  const port = 9300 + Math.floor(Math.random() * 500);  const child = spawn(
     CHROME,
     [
       '--headless=new',
@@ -639,6 +638,15 @@ async function cdpRenderPage(pageUrl, outPath, profile) {
       captureBeyondViewport: true,
     });
     fs.writeFileSync(outPath, Buffer.from(shot.data, 'base64'));
+    let pages = 1;
+    try {
+      const info = await cdp('Runtime.evaluate', {
+        expression: 'window.__pdfPages || 1',
+        returnByValue: true,
+      });
+      pages = Number(info.result && info.result.value) || 1;
+    } catch (e) {}
+    return pages;
   } finally {
     try {
       if (ws) ws.close();
@@ -652,13 +660,14 @@ async function cdpRenderPage(pageUrl, outPath, profile) {
   }
 }
 
-function renderPdfPage(pdfPath, outPath) {
+function renderPdfPage(pdfPath, outPath, pageNo = 1) {
   const profile = path.join(PDFS_DIR, `profile-${crypto.randomUUID().slice(0, 8)}`);
   const url = `http://127.0.0.1:${PORT}/pdf-render.html?file=${encodeURIComponent(
     `/pdfs/${path.basename(pdfPath)}`,
-  )}`;
-  return cdpRenderPage(url, outPath, profile).then(() => {
+  )}&page=${encodeURIComponent(pageNo)}`;
+  return cdpRenderPage(url, outPath, profile).then((pages) => {
     if (!fs.existsSync(outPath)) throw new Error('PDF 渲染失败');
+    return pages;
   });
 }
 
@@ -675,11 +684,32 @@ app.post('/api/tools/pdf', async (req, res, next) => {
     const pdfPath = path.join(PDFS_DIR, `${id}.pdf`);
     const pngPath = path.join(PDFS_DIR, `${id}.png`);
     fs.writeFileSync(pdfPath, buffer);
-    await renderPdfPage(pdfPath, pngPath);
-    try {
-      fs.unlinkSync(pdfPath);
-    } catch (e) {}
-    res.json({ url: `/pdfs/${id}.png`, width: 1200, height: 1200 });
+    const pages = await renderPdfPage(pdfPath, pngPath, 1);
+    setTimeout(() => {
+      try {
+        fs.unlinkSync(pdfPath);
+      } catch (e) {}
+    }, 10 * 60 * 1000).unref();
+    res.json({ url: `/pdfs/${id}.png`, width: 1200, height: 1200, pages, pdfId: id });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.post('/api/tools/pdf/page', async (req, res, next) => {
+  try {
+    const id = String(req.body?.id || '');
+    const page = Math.max(1, Math.min(50, Number(req.body?.page) || 1));
+    if (!/^[a-f0-9-]{6,40}$/i.test(id)) {
+      return res.status(400).json({ error: 'PDF', message: 'PDF 编号不对' });
+    }
+    const pdfPath = path.join(PDFS_DIR, `${id}.pdf`);
+    if (!fs.existsSync(pdfPath)) {
+      return res.status(404).json({ error: 'PDF', message: 'PDF 已过期，请重新选择文件' });
+    }
+    const pngPath = path.join(PDFS_DIR, `${id}-p${page}.png`);
+    const pages = await renderPdfPage(pdfPath, pngPath, page);
+    res.json({ url: `/pdfs/${id}-p${page}.png`, width: 1200, height: 1200, pages });
   } catch (e) {
     next(e);
   }

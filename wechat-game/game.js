@@ -2587,6 +2587,39 @@ function choosePhotoPattern() {
   });
 }
 
+function usePdfResult(data) {
+  const pages = Number(data.pages) || 1;
+  if (pages <= 1 || !data.pdfId || !wx.showActionSheet) {
+    if (wx.hideLoading) wx.hideLoading();
+    loadPhotoPattern(API_BASE + data.url);
+    return;
+  }
+  if (wx.hideLoading) wx.hideLoading();
+  const max = Math.min(pages, 6);
+  const itemList = [];
+  for (let i = 1; i <= max; i++) itemList.push(`第 ${i} 页`);
+  wx.showActionSheet({
+    itemList,
+    success(r) {
+      const page = r.tapIndex + 1;
+      if (page === 1) {
+        loadPhotoPattern(API_BASE + data.url);
+        return;
+      }
+      if (wx.showLoading) wx.showLoading({ title: `正在转第 ${page} 页…` });
+      request('/api/tools/pdf/page', 'POST', { id: data.pdfId, page }, 30000)
+        .then((res) => {
+          if (wx.hideLoading) wx.hideLoading();
+          loadPhotoPattern(API_BASE + res.url);
+        })
+        .catch(() => {
+          if (wx.hideLoading) wx.hideLoading();
+          wx.showToast({ title: '这一页转图失败', icon: 'none' });
+        });
+    },
+  });
+}
+
 function pickPdf() {
   if (!wx.chooseMessageFile || !wx.getFileSystemManager) {
     wx.showToast({ title: '当前环境不支持选 PDF，请用照片', icon: 'none' });
@@ -2606,10 +2639,7 @@ function pickPdf() {
         encoding: 'base64',
         success(res) {
           request('/api/tools/pdf', 'POST', { data: res.data }, 30000)
-            .then((data) => {
-              if (wx.hideLoading) wx.hideLoading();
-              loadPhotoPattern(API_BASE + data.url);
-            })
+            .then((data) => usePdfResult(data))
             .catch(() => {
               if (wx.hideLoading) wx.hideLoading();
               wx.showToast({ title: 'PDF 转图失败，确认服务端已启动', icon: 'none' });
