@@ -143,14 +143,14 @@ function toast(title) {
   if (wx.showToast) wx.showToast({ title, icon: 'none' });
 }
 
-function request(path, method = 'GET', data = null) {
+function request(path, method = 'GET', data = null, timeout = 10000) {
   return new Promise((resolve, reject) => {
     if (!wx.request) return reject(new Error('当前环境不支持网络请求'));
     wx.request({
       url: `${API_BASE}${path}`,
       method,
       data: data || undefined,
-      timeout: 10000,
+      timeout,
       header: {
         'content-type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -1837,32 +1837,83 @@ function saveImage() {  if (!wx.canvasToTempFilePath) {
 
 function choosePhotoPattern() {
   wx.showModal({
-    title: '照片转图纸',
+    title: '照片 / PDF 转图纸',
     content: '会按 29×29 重新配成 8 色豆图，并替换当前拼板。继续吗？',
     success(res) {
       if (!res.confirm) return;
       const done = (path) => loadPhotoPattern(path);
-      if (wx.chooseMedia) {
-        wx.chooseMedia({
-          count: 1,
-          mediaType: ['image'],
-          sourceType: ['album', 'camera'],
+      const pickImage = () => {
+        if (wx.chooseMedia) {
+          wx.chooseMedia({
+            count: 1,
+            mediaType: ['image'],
+            sourceType: ['album', 'camera'],
+            success(r) {
+              const f = r.tempFiles && r.tempFiles[0];
+              if (f) done(f.tempFilePath);
+            },
+          });
+        } else if (wx.chooseImage) {
+          wx.chooseImage({
+            count: 1,
+            sizeType: ['compressed'],
+            success(r) {
+              if (r.tempFilePaths && r.tempFilePaths[0]) done(r.tempFilePaths[0]);
+            },
+          });
+        } else {
+          wx.showToast({ title: '当前环境不支持选图', icon: 'none' });
+        }
+      };
+      if (wx.showActionSheet) {
+        wx.showActionSheet({
+          itemList: ['照片 / 拍照', 'PDF 文件'],
           success(r) {
-            const f = r.tempFiles && r.tempFiles[0];
-            if (f) done(f.tempFilePath);
+            if (r.tapIndex === 0) pickImage();
+            else pickPdf();
           },
-        });
-      } else if (wx.chooseImage) {
-        wx.chooseImage({
-          count: 1,
-          sizeType: ['compressed'],
-          success(r) {
-            if (r.tempFilePaths && r.tempFilePaths[0]) done(r.tempFilePaths[0]);
-          },
+          fail() {},
         });
       } else {
-        wx.showToast({ title: '当前环境不支持选图', icon: 'none' });
+        pickImage();
       }
+    },
+  });
+}
+
+function pickPdf() {
+  if (!wx.chooseMessageFile || !wx.getFileSystemManager) {
+    wx.showToast({ title: '当前环境不支持选 PDF，请用照片', icon: 'none' });
+    return;
+  }
+  wx.chooseMessageFile({
+    count: 1,
+    type: 'file',
+    extension: ['pdf'],
+    success(r) {
+      const f = r.tempFiles && r.tempFiles[0];
+      const filePath = f && (f.path || f.tempFilePath);
+      if (!filePath) return;
+      if (wx.showLoading) wx.showLoading({ title: '正在转 PDF…' });
+      wx.getFileSystemManager().readFile({
+        filePath,
+        encoding: 'base64',
+        success(res) {
+          request('/api/tools/pdf', 'POST', { data: res.data }, 30000)
+            .then((data) => {
+              if (wx.hideLoading) wx.hideLoading();
+              loadPhotoPattern(API_BASE + data.url);
+            })
+            .catch(() => {
+              if (wx.hideLoading) wx.hideLoading();
+              wx.showToast({ title: 'PDF 转图失败，确认服务端已启动', icon: 'none' });
+            });
+        },
+        fail() {
+          if (wx.hideLoading) wx.hideLoading();
+          wx.showToast({ title: 'PDF 读取失败', icon: 'none' });
+        },
+      });
     },
   });
 }

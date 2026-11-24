@@ -5,6 +5,7 @@ data/douyu.db
 data/douyu.db-shm
 data/douyu.db-wal
 data/covers/
+data/pdfs/
 .env
 .env.*
 !.env.example

@@ -2,6 +2,7 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   COVERS_DIR,
@@ -17,12 +18,14 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.env.DOUYU_PORT || 8787);
 const HOST = process.env.DOUYU_HOST || '127.0.0.1';
+const PDFS_DIR = path.join(DATA_DIR, 'pdfs');
+fs.mkdirSync(PDFS_DIR, { recursive: true });
 
 seedDemoContent();
 
 const app = express();
 app.disable('x-powered-by');
-app.use(express.json({ limit: '12mb' }));
+app.use(express.json({ limit: '30mb' }));
 
 function authOptional(req, _res, next) {
   const header = req.headers.authorization || '';
@@ -533,6 +536,161 @@ app.post('/api/works', requireAuth, (req, res) => {
   const row = getWorkRow(id, req.user.id);
   res.json({ work: mapWork(row, req.user.id), points, awarded: 50 });
 });
+
+/* ------------------------------- PDF tools ------------------------------- */
+
+const CHROME =
+  process.env.DOUYU_CHROME ||
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function cdpRenderPage(pageUrl, outPath, profile) {
+  const port = 9300 + Math.floor(Math.random() * 500);
+  const child = spawn(
+    CHROME,
+    [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-extensions',
+      '--hide-scrollbars',
+      '--window-size=1200,1200',
+      '--remote-debugging-address=127.0.0.1',
+      `--remote-debugging-port=${port}`,
+      `--user-data-dir=${profile}`,
+      'about:blank',
+    ],
+    { stdio: 'ignore', windowsHide: true },
+  );
+
+  let ws = null;
+  try {
+    let page = null;
+    for (let i = 0; i < 60; i++) {
+      try {
+        const res = await fetch(`http://127.0.0.1:${port}/json/list`);
+        const list = await res.json();
+        page = list.find((p) => p.type === 'page');
+        if (page && page.webSocketDebuggerUrl) break;
+      } catch (e) {}
+      await sleep(250);
+    }
+    if (!page) throw new Error('Chrome 没有启动');
+
+    ws = new WebSocket(page.webSocketDebuggerUrl);
+    await new Promise((resolve, reject) => {
+      ws.addEventListener('open', resolve, { once: true });
+      ws.addEventListener('error', reject, { once: true });
+    });
+    let seq = 0;
+    const pending = new Map();
+    ws.addEventListener('message', (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.id && pending.has(msg.id)) {
+        const p = pending.get(msg.id);
+        pending.delete(msg.id);
+        if (msg.error) p.reject(new Error(JSON.stringify(msg.error)));
+        else p.resolve(msg.result);
+      }
+    });
+    const cdp = (method, params = {}) =>
+      new Promise((resolve, reject) => {
+        const id = ++seq;
+        pending.set(id, { resolve, reject });
+        ws.send(JSON.stringify({ id, method, params }));
+      });
+
+    await cdp('Page.enable');
+    await cdp('Runtime.enable');
+    await cdp('Emulation.setDeviceMetricsOverride', {
+      width: 1200,
+      height: 1200,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
+    await cdp('Page.navigate', { url: pageUrl });
+
+    let done = false;
+    for (let i = 0; i < 50; i++) {
+      await sleep(300);
+      try {
+        const state = await cdp('Runtime.evaluate', {
+          expression: '({done:!!window.__pdfDone,error:window.__pdfError||""})',
+          returnByValue: true,
+        });
+        const value = state.result && state.result.value;
+        if (value && value.done) {
+          done = true;
+          break;
+        }
+        if (value && value.error) throw new Error(value.error);
+      } catch (e) {
+        if (String(e).includes('PDF')) throw e;
+      }
+    }
+    if (!done) throw new Error('PDF 页面渲染超时');
+
+    const shot = await cdp('Page.captureScreenshot', {
+      format: 'png',
+      fromSurface: true,
+      captureBeyondViewport: true,
+    });
+    fs.writeFileSync(outPath, Buffer.from(shot.data, 'base64'));
+  } finally {
+    try {
+      if (ws) ws.close();
+    } catch (e) {}
+    try {
+      child.kill();
+    } catch (e) {}
+    try {
+      fs.rmSync(profile, { recursive: true, force: true });
+    } catch (e) {}
+  }
+}
+
+function renderPdfPage(pdfPath, outPath) {
+  const profile = path.join(PDFS_DIR, `profile-${crypto.randomUUID().slice(0, 8)}`);
+  const url = `http://127.0.0.1:${PORT}/pdf-render.html?file=${encodeURIComponent(
+    `/pdfs/${path.basename(pdfPath)}`,
+  )}`;
+  return cdpRenderPage(url, outPath, profile).then(() => {
+    if (!fs.existsSync(outPath)) throw new Error('PDF 渲染失败');
+  });
+}
+
+app.post('/api/tools/pdf', async (req, res, next) => {
+  try {
+    const raw = String(req.body?.data || '');
+    const base64 = raw.includes(',') ? raw.split(',').pop() : raw;
+    if (!base64) return res.status(400).json({ error: 'PDF', message: '没有收到 PDF 文件' });
+    const buffer = Buffer.from(base64, 'base64');
+    if (buffer.length < 1000 || buffer.length > 20 * 1024 * 1024) {
+      return res.status(400).json({ error: 'PDF', message: 'PDF 大小不合适（最大 20MB）' });
+    }
+    const id = crypto.randomUUID().slice(0, 10);
+    const pdfPath = path.join(PDFS_DIR, `${id}.pdf`);
+    const pngPath = path.join(PDFS_DIR, `${id}.png`);
+    fs.writeFileSync(pdfPath, buffer);
+    await renderPdfPage(pdfPath, pngPath);
+    try {
+      fs.unlinkSync(pdfPath);
+    } catch (e) {}
+    res.json({ url: `/pdfs/${id}.png`, width: 1200, height: 1200 });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.get('/pdf-render.html', (_req, res) => {
+  res.sendFile(path.join(ROOT, 'server', 'pdf-render.html'));
+});
+
+app.use('/pdfjs', express.static(path.join(ROOT, 'node_modules', 'pdfjs-dist', 'build')));
+app.use('/pdfs', express.static(PDFS_DIR, { maxAge: '1d', fallthrough: true }));
 
 /* ------------------------------- static -------------------------------- */
 
