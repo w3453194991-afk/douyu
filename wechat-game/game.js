@@ -695,7 +695,7 @@ function drawMenu() {
   const x = W / 2 - 140;
   const y = SAFE_TOP + 120;
   const w = 280;
-  const h = 300;
+  const h = 354;
   roundRect(x, y, w, h, 18);
   ctx.fillStyle = BG;
   ctx.fill();
@@ -713,16 +713,17 @@ function drawMenu() {
     ['豆仓 / 缺色', '查当前用豆和库存'],
     ['按行跟做', '一次亮一行'],
     ['保存图片', '把当前画面存相册'],
+    ['导出 A4 图纸', '生成 29×29 图纸并保存'],
     ['关闭', '回到拼板'],
   ];
   for (let i = 0; i < items.length; i++) {
     const iy = y + 78 + i * 52;
     roundRect(x + 16, iy, w - 32, 42, 10);
-    ctx.fillStyle = i === 3 ? 'rgba(255,255,255,0.45)' : '#FFFDF8';
+    ctx.fillStyle = i === 4 ? 'rgba(255,255,255,0.45)' : '#FFFDF8';
     ctx.fill();
     ctx.strokeStyle = 'rgba(53,41,27,0.10)';
     ctx.stroke();
-    ctx.fillStyle = i === 3 ? MUTED : INK;
+    ctx.fillStyle = i === 4 ? MUTED : INK;
     ctx.font = 'bold 12px sans-serif';
     ctx.fillText(items[i][0], x + 28, iy + 18);
     ctx.fillStyle = MUTED;
@@ -1414,6 +1415,169 @@ function drawFallback3D() {
   ctx.textAlign = 'left';
 }
 
+function buildSheetCanvas() {
+  if (!wx.createOffscreenCanvas) return null;
+  const SW = 2200;
+  const SH = 1556;
+  const cv = wx.createOffscreenCanvas({ type: '2d', width: SW, height: SH });
+  const c = cv.getContext('2d');
+  if (!c) return null;
+  const paper = '#FBF7EE';
+  const ink = '#2B2117';
+  const muted = '#706453';
+  const coral = '#E0582F';
+  c.fillStyle = paper;
+  c.fillRect(0, 0, SW, SH);
+  c.fillStyle = ink;
+  c.font = 'bold 30px sans-serif';
+  c.fillText('豆屿 · BEAD ISLE', 64, 66);
+  c.fillStyle = muted;
+  c.font = '18px sans-serif';
+  c.fillText('拼豆图纸 / PATTERN CHART', 64, 98);
+
+  c.fillStyle = ink;
+  c.font = 'bold 44px sans-serif';
+  c.fillText('豆屿小岛 · 29 × 29', 64, 156);
+  const stat = countBeads();
+  c.fillStyle = muted;
+  c.font = '19px sans-serif';
+  c.fillText(`${stat.n} 颗豆 · 8 色 · 成品约 ${(29 * 0.5).toFixed(1)} × ${(29 * 0.5).toFixed(1)} cm · 1 块 29×29 拼板`, 64, 190);
+
+  const gx = 64;
+  const gy = 226;
+  const gw = 1400;
+  const gh = 1080;
+  const cs = Math.min(gw / N, gh / N);
+  const gridW = cs * N;
+  const gridH = cs * N;
+  c.fillStyle = '#FFFDF8';
+  c.fillRect(gx, gy, gridW, gridH);
+  c.strokeStyle = 'rgba(43,33,23,0.10)';
+  c.lineWidth = 1;
+  for (let i = 0; i <= N; i++) {
+    c.beginPath();
+    c.moveTo(gx + i * cs, gy);
+    c.lineTo(gx + i * cs, gy + gridH);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(gx, gy + i * cs);
+    c.lineTo(gx + gridW, gy + i * cs);
+    c.stroke();
+  }
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const v = board[y][x];
+      if (v < 0) continue;
+      c.fillStyle = COLORS[v].hex;
+      c.beginPath();
+      c.arc(gx + (x + 0.5) * cs, gy + (y + 0.5) * cs, cs * 0.42, 0, Math.PI * 2);
+      c.fill();
+      c.beginPath();
+      c.arc(gx + (x + 0.5) * cs, gy + (y + 0.5) * cs, cs * 0.14, 0, Math.PI * 2);
+      c.fillStyle = '#FFFDF8';
+      c.fill();
+    }
+  }
+  c.strokeStyle = 'rgba(43,33,23,0.24)';
+  c.lineWidth = 2;
+  c.strokeRect(gx, gy, gridW, gridH);
+  c.fillStyle = muted;
+  c.font = '13px sans-serif';
+  for (let i = 0; i < N; i += 5) {
+    c.textAlign = 'center';
+    c.fillText(String(i), gx + (i + 0.5) * cs, gy - 8);
+    c.textAlign = 'right';
+    c.fillText(String(i), gx - 8, gy + (i + 0.5) * cs + 4);
+  }
+  c.textAlign = 'left';
+
+  const lx = 1540;
+  const ly = 238;
+  c.fillStyle = ink;
+  c.font = 'bold 24px sans-serif';
+  c.fillText(`色号清单 · ${stat.n} 颗`, lx, ly);
+  c.fillStyle = muted;
+  c.font = '15px sans-serif';
+  c.fillText('每种颜色按 1000 颗/包备料，建议多备 10%', lx, ly + 24);
+  const used = COLORS.map(() => 0);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) if (board[y][x] >= 0) used[board[y][x]]++;
+  }
+  COLORS.forEach((col, i) => {
+    const ry = ly + 58 + i * 46;
+    c.fillStyle = col.hex;
+    c.fillRect(lx, ry - 16, 28, 28);
+    c.fillStyle = ink;
+    c.font = 'bold 17px sans-serif';
+    c.fillText(codeText(col.code), lx + 38, ry + 6);
+    c.fillStyle = muted;
+    c.font = '15px sans-serif';
+    c.textAlign = 'right';
+    c.fillText(`${used[i]} 颗`, lx + 560, ry + 6);
+    c.textAlign = 'left';
+  });
+
+  c.fillStyle = '#F4EADB';
+  c.fillRect(64, 1360, 2072, 100);
+  c.fillStyle = ink;
+  c.font = 'bold 20px sans-serif';
+  c.fillText('制作顺序', 84, 1394);
+  c.fillStyle = muted;
+  c.font = '16px sans-serif';
+  c.fillText('01 先摆轮廓   02 按色号填   03 胶带法翻面   04 熨烫压平', 84, 1424);
+  c.fillText('豆屿 BEAD ISLE · 小游戏导出图纸 · 5mm 中豆', 64, 1520);
+  c.textAlign = 'right';
+  c.fillText('一颗一颗，熨成一座岛。', SW - 64, 1520);
+  c.textAlign = 'left';
+  return cv;
+}
+
+function codeText(code) {
+  return String(code || 'P').slice(0, 8);
+}
+
+function exportA4() {
+  const cv = buildSheetCanvas();
+  if (!cv) {
+    toast('当前环境不支持导出图纸');
+    return;
+  }
+  if (!wx.canvasToTempFilePath) {
+    toast('当前环境不支持导出图纸');
+    return;
+  }
+  if (wx.showLoading) wx.showLoading({ title: '正在生成图纸…' });
+  wx.canvasToTempFilePath({
+    canvas: cv,
+    width: 2200,
+    height: 1556,
+    destWidth: 2200,
+    destHeight: 1556,
+    success(res) {
+      if (wx.hideLoading) wx.hideLoading();
+      wx.saveImageToPhotosAlbum({
+        filePath: res.tempFilePath,
+        success() {
+          toast('A4 图纸已保存到相册');
+        },
+        fail() {
+          if (wx.showModal) {
+            wx.showModal({
+              title: '需要相册权限',
+              content: '允许保存图片后，再点一次导出。',
+              showCancel: false,
+            });
+          }
+        },
+      });
+    },
+    fail() {
+      if (wx.hideLoading) wx.hideLoading();
+      toast('导出失败，稍后再试');
+    },
+  });
+}
+
 function saveImage() {  if (!wx.canvasToTempFilePath) {
     wx.showToast({ title: '当前环境不支持保存', icon: 'none' });
     return;
@@ -1711,7 +1875,7 @@ function handleOverlay(x, y) {
   if (overlay === 'menu') {
     const x0 = W / 2 - 140;
     const y0 = SAFE_TOP + 120;
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       const iy = y0 + 78 + i * 52;
       if (x >= x0 + 16 && x <= x0 + 264 && y >= iy && y <= iy + 42) {
         if (i === 0) overlay = 'inventory';
@@ -1729,12 +1893,15 @@ function handleOverlay(x, y) {
         } else if (i === 2) {
           overlay = null;
           saveImage();
+        } else if (i === 3) {
+          overlay = null;
+          exportA4();
         } else overlay = null;
         draw();
         return;
       }
     }
-    if (y < y0 || y > y0 + 300) overlay = null;
+    if (y < y0 || y > y0 + 354) overlay = null;
     draw();
     return;
   }
@@ -1809,5 +1976,6 @@ if (typeof GameGlobal !== 'undefined') {
       view3d = !view3d;
       draw();
     },
+    sheet: () => buildSheetCanvas(),
   };
 }
