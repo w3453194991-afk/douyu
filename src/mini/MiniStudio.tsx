@@ -23,6 +23,7 @@ const TOOLS: Array<{ id: Tool; label: string; icon: IconName }> = [
 const BRAND_COLORS = Object.values(BRANDS).flatMap((b: any) =>
   b.colors.map((c: any) => ({ ...c, brand: b.id, brandLabel: b.label })),
 );
+const COLOR_TOTAL = PALETTE.length + BRAND_COLORS.length;
 
 type Sheet = 'color' | 'pieces' | 'guide' | 'menu' | 'confirm' | 'row' | null;
 
@@ -235,7 +236,7 @@ export function MiniStudio({
             <b>{currentCode.name || info.name}</b>
             <span>
               {currentCode.approx ? '≈' : ''}
-              {currentCode.code} · 36 色 + 全品牌
+              {currentCode.code} · {COLOR_TOTAL} 色
             </span>
           </div>
         </div>

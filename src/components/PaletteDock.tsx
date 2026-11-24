@@ -10,6 +10,7 @@ const BRAND_COLORS = Object.values(BRANDS).flatMap((b: any) =>
   b.colors.map((c: any) => ({ ...c, brand: b.id, brandLabel: b.label })),
 );
 const DOUYU = ORDERED.map((c) => ({ ...c, brand: 'douyu', brandLabel: '豆屿' }));
+const COLOR_TOTAL = DOUYU.length + BRAND_COLORS.length;
 
 export function PaletteDock() {
   const color = useStudio((s) => s.color);
@@ -70,7 +71,7 @@ export function PaletteDock() {
           <b>{currentCode.name || info.name}</b>
           <span>
             {currentCode.approx ? '≈' : ''}
-            {currentCode.code} · {PALETTE.length} 色 + 全品牌
+            {currentCode.code} · {COLOR_TOTAL} 色
           </span>
         </div>
         <div className="recent-colors" title="最近使用">
@@ -104,7 +105,7 @@ export function PaletteDock() {
         >
           编号 {showCodes ? '开' : '关'}
         </button>
-        <span className="palette-brand">全品牌</span>
+        <span className="palette-brand">{COLOR_TOTAL} 色</span>
       </div>
       <div className="palette-scroll" ref={scrollRef}>
         <div className="swatches">
