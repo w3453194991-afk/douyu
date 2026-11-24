@@ -81,7 +81,15 @@ let eraser = false;
 let history = [];
 let view3d = false;
 let angle = -0.38;
+let pitch = 0.62;
 let dragX = null;
+let dragY = null;
+let glCanvas = null;
+let gl = null;
+let glProgram = null;
+let glBuffer = null;
+let glLoc = null;
+let glFailed = false;
 let overlay = null; // 'menu' | 'inventory'
 let rowMode = false;
 let rowFocus = 0;
@@ -479,6 +487,7 @@ function draw() {
     drawDetail();
     return;
   }
+  if (view3d) initWebGL();
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, W, H);
 
@@ -498,7 +507,9 @@ function draw() {
   ctx.font = '11px sans-serif';
   ctx.fillText(
     view3d
-      ? '2.5D 预览 · 左右拖动旋转'
+      ? gl
+        ? 'WebGL 3D · 拖动旋转'
+        : '2.5D 预览 · 左右拖动旋转'
       : rowMode
         ? `按行 · 第 ${rowFocus + 1} / ${N} 行`
         : '拼豆小岛 · 小游戏版',
@@ -1048,7 +1059,7 @@ function drawFooter() {
   ctx.fillStyle = 'rgba(43,33,23,0.42)';
   ctx.font = '9px sans-serif';
   let text = '29 × 29 标准拼板 · 5mm 中豆 · 豆屿 BEAD ISLE';
-  if (view3d) text = 'Canvas 2.5D 预览 · 完整 3D 待接 WebGL';
+  if (view3d) text = gl ? 'WebGL 3D 预览 · 拖动旋转' : 'Canvas 2.5D 预览 · 完整 3D 待接 WebGL';
   else if (rowMode) {
     let n = 0;
     for (let x = 0; x < N; x++) if (board[rowFocus][x] >= 0) n++;
@@ -1058,7 +1069,262 @@ function drawFooter() {
   ctx.textAlign = 'left';
 }
 
+/* ------------------------------- WebGL 3D -------------------------------- */
+function mat4Identity() {
+  return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+}
+
+function mat4Multiply(a, b) {
+  const out = new Array(16);
+  for (let c = 0; c < 4; c++) {
+    for (let r = 0; r < 4; r++) {
+      out[c * 4 + r] =
+        a[r] * b[c * 4] +
+        a[4 + r] * b[c * 4 + 1] +
+        a[8 + r] * b[c * 4 + 2] +
+        a[12 + r] * b[c * 4 + 3];
+    }
+  }
+  return out;
+}
+
+function mat4Perspective(fovy, aspect, near, far) {
+  const f = 1 / Math.tan(fovy / 2);
+  const nf = 1 / (near - far);
+  return [
+    f / aspect, 0, 0, 0,
+    0, f, 0, 0,
+    0, 0, (far + near) * nf, -1,
+    0, 0, 2 * far * near * nf, 0,
+  ];
+}
+
+function mat4LookAt(eye, center, up) {
+  const z0 = eye[0] - center[0];
+  const z1 = eye[1] - center[1];
+  const z2 = eye[2] - center[2];
+  let zl = Math.hypot(z0, z1, z2) || 1;
+  const z = [z0 / zl, z1 / zl, z2 / zl];
+  let x0 = up[1] * z[2] - up[2] * z[1];
+  let x1 = up[2] * z[0] - up[0] * z[2];
+  let x2 = up[0] * z[1] - up[1] * z[0];
+  let xl = Math.hypot(x0, x1, x2) || 1;
+  const x = [x0 / xl, x1 / xl, x2 / xl];
+  const y = [
+    z[1] * x[2] - z[2] * x[1],
+    z[2] * x[0] - z[0] * x[2],
+    z[0] * x[1] - z[1] * x[0],
+  ];
+  return [
+    x[0], y[0], z[0], 0,
+    x[1], y[1], z[1], 0,
+    x[2], y[2], z[2], 0,
+    -(x[0] * eye[0] + x[1] * eye[1] + x[2] * eye[2]),
+    -(y[0] * eye[0] + y[1] * eye[1] + y[2] * eye[2]),
+    -(z[0] * eye[0] + z[1] * eye[1] + z[2] * eye[2]),
+    1,
+  ];
+}
+
+function hexRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
+function initWebGL() {
+  if (gl) return true;
+  if (glFailed || !wx.createOffscreenCanvas) return false;
+  try {
+    glCanvas = wx.createOffscreenCanvas({
+      type: 'webgl',
+      width: W * DPR,
+      height: H * DPR,
+    });
+    gl = glCanvas.getContext('webgl', {
+      alpha: true,
+      antialias: true,
+      preserveDrawingBuffer: true,
+    });
+    if (!gl) throw new Error('no webgl');
+    const vs = `
+      attribute vec3 aPos;
+      attribute vec3 aNormal;
+      attribute vec3 aColor;
+      uniform mat4 uMVP;
+      varying vec3 vN;
+      varying vec3 vC;
+      void main() {
+        vN = aNormal;
+        vC = aColor;
+        gl_Position = uMVP * vec4(aPos, 1.0);
+      }
+    `;
+    const fs = `
+      precision mediump float;
+      varying vec3 vN;
+      varying vec3 vC;
+      void main() {
+        vec3 n = normalize(vN);
+        float d = max(dot(n, normalize(vec3(-0.4, 0.85, 0.5))), 0.0);
+        gl_FragColor = vec4(vC * (0.58 + 0.52 * d), 1.0);
+      }
+    `;
+    const compile = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(s) || 'shader');
+      }
+      return s;
+    };
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vs));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program) || 'link');
+    }
+    glProgram = program;
+    glBuffer = gl.createBuffer();
+    glLoc = {
+      pos: gl.getAttribLocation(program, 'aPos'),
+      normal: gl.getAttribLocation(program, 'aNormal'),
+      color: gl.getAttribLocation(program, 'aColor'),
+      mvp: gl.getUniformLocation(program, 'uMVP'),
+    };
+    gl.enable(gl.DEPTH_TEST);
+    gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+    gl.clearColor(0, 0, 0, 0);
+    return true;
+  } catch (e) {
+    glFailed = true;
+    gl = null;
+    return false;
+  }
+}
+
+function pushFace(out, a, b, c, d, n, color) {
+  const pts = [a, b, c, a, c, d];
+  for (const p of pts) out.push(p[0], p[1], p[2], n[0], n[1], n[2], color[0], color[1], color[2]);
+}
+
+function pushBox(out, cx, cy, cz, sx, sy, sz, color) {
+  const x0 = cx - sx / 2;
+  const x1 = cx + sx / 2;
+  const y0 = cy - sy / 2;
+  const y1 = cy + sy / 2;
+  const z0 = cz - sz / 2;
+  const z1 = cz + sz / 2;
+  pushFace(out, [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [0, 0, 1], color);
+  pushFace(out, [x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [0, 0, -1], color);
+  pushFace(out, [x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [1, 0, 0], color);
+  pushFace(out, [x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [-1, 0, 0], color);
+  pushFace(out, [x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0], [0, 1, 0], color);
+  pushFace(out, [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, -1, 0], color);
+}
+
+function renderWebGL() {
+  if (!initWebGL()) return false;
+  const verts = [];
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      if (board[y][x] < 0) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  if (!Number.isFinite(minX)) {
+    minX = 0;
+    minY = 0;
+    maxX = N - 1;
+    maxY = N - 1;
+  }
+  const w = maxX - minX + 1;
+  const d = maxY - minY + 1;
+  const cx = (minX + maxX + 1) / 2;
+  const cz = (minY + maxY + 1) / 2;
+  const baseSize = Math.max(w, d) + 3;
+  pushBox(
+    verts,
+    cx,
+    -0.18,
+    cz,
+    baseSize,
+    0.32,
+    baseSize,
+    hexRgb('#252832'),
+  );
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      if (board[y][x] < 0) continue;
+      const h = fused[y][x] ? 0.52 : 0.72;
+      pushBox(
+        verts,
+        x + 0.5,
+        h / 2,
+        y + 0.5,
+        0.82,
+        h,
+        0.82,
+        hexRgb(COLORS[board[y][x]].hex),
+      );
+    }
+  }
+
+  const target = [cx, 0.3, cz];
+  const radius = Math.max(20, baseSize * 2.8 + 6);
+  const eye = [
+    target[0] + Math.cos(pitch) * Math.sin(angle) * radius,
+    target[1] + Math.sin(pitch) * radius,
+    target[2] + Math.cos(pitch) * Math.cos(angle) * radius,
+  ];
+  const view = mat4LookAt(eye, target, [0, 1, 0]);
+  const proj = mat4Perspective(Math.PI / 4, W / H, 0.1, 200);
+  const mvp = mat4Multiply(proj, view);
+
+  gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(glProgram);
+  gl.uniformMatrix4fv(glLoc.mvp, false, new Float32Array(mvp));
+  gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.DYNAMIC_DRAW);
+  const stride = 9 * 4;
+  gl.enableVertexAttribArray(glLoc.pos);
+  gl.vertexAttribPointer(glLoc.pos, 3, gl.FLOAT, false, stride, 0);
+  gl.enableVertexAttribArray(glLoc.normal);
+  gl.vertexAttribPointer(glLoc.normal, 3, gl.FLOAT, false, stride, 3 * 4);
+  gl.enableVertexAttribArray(glLoc.color);
+  gl.vertexAttribPointer(glLoc.color, 3, gl.FLOAT, false, stride, 6 * 4);
+  gl.drawArrays(gl.TRIANGLES, 0, verts.length / 9);
+  return true;
+}
+
 function draw3DScene() {
+  if (renderWebGL()) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, boardY - 6, W, H - boardY - 96);
+    ctx.clip();
+    ctx.drawImage(glCanvas, 0, 0, W, H);
+    ctx.restore();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(43,33,23,0.55)';
+    ctx.font = '10px sans-serif';
+    ctx.fillText('上下左右拖动，转一转', W / 2, toolbarY - 38);
+    ctx.textAlign = 'left';
+    return;
+  }
+  drawFallback3D();
+}
+
+function drawFallback3D() {
   const stat = countBeads();
   if (!stat.n) {
     ctx.textAlign = 'center';
@@ -1148,8 +1414,7 @@ function draw3DScene() {
   ctx.textAlign = 'left';
 }
 
-function saveImage() {
-  if (!wx.canvasToTempFilePath) {
+function saveImage() {  if (!wx.canvasToTempFilePath) {
     wx.showToast({ title: '当前环境不支持保存', icon: 'none' });
     return;
   }
@@ -1508,7 +1773,10 @@ draw();
 wx.onTouchStart((e) => {
   const t = e.touches && e.touches[0];
   if (!t) return;
-  if (view3d && !overlay && t.clientY < toolbarY - 6) dragX = t.clientX;
+  if (view3d && !overlay && t.clientY < toolbarY - 6) {
+    dragX = t.clientX;
+    dragY = t.clientY;
+  }
   handle(t.clientX, t.clientY);
 });
 
@@ -1518,7 +1786,9 @@ if (wx.onTouchMove) {
     const t = e.touches && e.touches[0];
     if (!t) return;
     angle += (t.clientX - dragX) * 0.012;
+    pitch = Math.max(0.18, Math.min(1.25, pitch + (t.clientY - dragY) * 0.008));
     dragX = t.clientX;
+    dragY = t.clientY;
     draw();
   });
 }
@@ -1526,6 +1796,7 @@ if (wx.onTouchMove) {
 if (wx.onTouchEnd) {
   wx.onTouchEnd(() => {
     dragX = null;
+    dragY = null;
   });
 }
 
