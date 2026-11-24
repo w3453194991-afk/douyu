@@ -1,7 +1,10 @@
+const config = require('./config');
+const sys = wx.getSystemInfoSync();
+
 App({
   globalData: {
-    // 电脑上跑 `npm start` 后，默认服务地址
-    serviceUrl: 'http://127.0.0.1:8787'
+    config,
+    isDevtools: sys.platform === 'devtools',
   },
-  onLaunch() {}
+  onLaunch() {},
 });

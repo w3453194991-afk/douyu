@@ -1,1 +1,8 @@
-<web-view src="{{url}}" binderror="onWebError"></web-view>
+<web-view wx:if="{{url}}" src="{{url}}" binderror="onWebError"></web-view>
+<view wx:else class="setup">
+  <view class="setup-card">
+    <view class="setup-title">体验版还不能直接打开</view>
+    <view class="setup-text">{{tip}}</view>
+    <view class="setup-code">wechat-mini/config.js → onlineOrigin</view>
+  </view>
+</view>
