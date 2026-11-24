@@ -101,7 +101,7 @@ export function PaletteDock() {
         <button
           className={`palette-code-toggle ${showCodes ? 'on' : ''}`}
           onClick={() => setShowCodes(!showCodes)}
-          title="在每颗豆子上显示编号"
+          title="在每颗豆子上显示编号；缩得很小时只显示后两位"
         >
           编号 {showCodes ? '开' : '关'}
         </button>

@@ -461,24 +461,27 @@ export function BoardView({
       const { project, showCodes } = latest.current;
       if (!showCodes) return;
       const cp = cellPx();
-      if (cp < 13) return;
+      if (cp < 8) return;
       const v = viewRef.current;
-      const font = Math.max(5.5, Math.min(8, cp * 0.3));
+      const compact = cp < 12;
+      const font = compact ? Math.max(4.2, cp * 0.46) : Math.max(5.5, Math.min(8, cp * 0.3));
       ctx.save();
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.font = `700 ${font}px "PingFang SC","Microsoft YaHei",sans-serif`;
       const label = (x: number, y: number, hex: string) => {
         if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
-        const code = beadCode(hex).code;
-        if (!code) return;
+        const raw = beadCode(hex).code;
+        if (!raw) return;
+        // 缩到一格只有十来个像素时，P08 只留 08，保证还能看见编号。
+        const code = compact ? raw.replace(/^[A-Za-z]+/, '') : raw;
         const sx = (x + 0.5) * cp + v.tx;
         const sy = (y + 0.5) * cp + v.ty;
         if (sx < -30 || sy < -20 || sx > v.w + 30 || sy > v.h + 20) return;
         const n = parseInt(hex.slice(1), 16);
         const bright = (((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000;
         const light = bright > 155;
-        ctx.lineWidth = Math.max(1.4, font * 0.34);
+        ctx.lineWidth = Math.max(1.2, font * 0.3);
         ctx.strokeStyle = light ? 'rgba(255,255,255,0.78)' : 'rgba(16,16,18,0.68)';
         ctx.strokeText(code, sx, sy);
         ctx.fillStyle = light ? '#17181d' : '#fffdf8';
