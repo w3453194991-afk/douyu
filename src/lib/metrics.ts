@@ -1,5 +1,6 @@
 import type { Bead, Project } from '../types';
 import { colorInfo } from '../../shared/palette.mjs';
+import { nearestBrand } from '../../shared/brands.mjs';
 
 export type ColorStat = {
   hex: string;
@@ -29,7 +30,7 @@ export function projectBeads(project: Project): Bead[] {
   return [...map.values()];
 }
 
-export function colorStats(beads: Bead[]): ColorStat[] {
+export function colorStats(beads: Bead[], brand: Project['brand'] = 'douyu'): ColorStat[] {
   const counts = new Map<string, number>();
   for (const b of beads) {
     const key = b.c.toUpperCase();
@@ -37,6 +38,10 @@ export function colorStats(beads: Bead[]): ColorStat[] {
   }
   return [...counts.entries()]
     .map(([hex, count]) => {
+      if (brand && brand !== 'douyu') {
+        const near = nearestBrand(hex, brand);
+        return { hex, count, code: near.code, name: near.name };
+      }
       const info = colorInfo(hex);
       return { hex, count, code: info.code, name: info.name };
     })
@@ -63,7 +68,7 @@ const BOARD_SIZE = 29;
 /** 5mm 中豆；一块标准方形拼板 29×29。 */
 export function projectMetrics(project: Project): ProjectMetrics {
   const beads = projectBeads(project);
-  const stats = colorStats(beads);
+  const stats = colorStats(beads, project.brand || 'douyu');
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;

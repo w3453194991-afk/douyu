@@ -26,6 +26,7 @@ export function blankProject(title = '无题小岛'): Project {
     loose: [],
     pieces: [],
     guide: null,
+    brand: 'douyu',
     createdAt: now,
     updatedAt: now,
   };
@@ -50,6 +51,7 @@ export function loadProject(): Project {
           t: pc.t && Array.isArray(pc.t.p) && Array.isArray(pc.t.r) ? pc.t : { p: [0, 0, 0], r: [0, 0, 0] },
         })),
       guide: p.guide && Array.isArray(p.guide.pieces) ? p.guide : null,
+      brand: p.brand === 'hama' || p.brand === 'perler' || p.brand === 'artkal' ? p.brand : 'douyu',
       createdAt: p.createdAt || Date.now(),
       updatedAt: p.updatedAt || Date.now(),
     };
@@ -124,7 +126,7 @@ type StudioState = {
   redo: () => void;
 
   newProject: (title?: string) => void;
-  importProject: (beads: Bead[], title?: string) => void;
+  importProject: (beads: Bead[], title?: string, brand?: Project['brand']) => void;
   replaceColor: (from: string, to: string) => number;
   loadGuide: (guide: Guide, title: string) => void;
   discardGuide: () => void;
@@ -552,8 +554,8 @@ export const useStudio = create<StudioState>()((set, get) => ({
       actionDirty: false,
     }),
 
-  importProject: (beads, title) =>
-    set(() => {
+  importProject: (beads, title, brand) =>
+    set((s) => {
       const map = new Map<string, Bead>();
       for (const b of beads) {
         if (!Number.isFinite(b.x) || !Number.isFinite(b.y) || typeof b.c !== 'string') continue;
@@ -564,12 +566,16 @@ export const useStudio = create<StudioState>()((set, get) => ({
         });
       }
       const list = [...map.values()];
+      const firstColor = list[0]?.c || s.color;
       return {
         project: {
           ...blankProject(title?.trim().slice(0, 30) || '照片图纸'),
           loose: list,
+          brand: brand || 'douyu',
           updatedAt: Date.now(),
         },
+        color: firstColor,
+        recentColors: [firstColor, ...s.recentColors.filter((c) => c !== firstColor)].slice(0, 8),
         selection: null,
         selectedPieceId: null,
         past: [],

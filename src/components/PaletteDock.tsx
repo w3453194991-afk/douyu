@@ -14,10 +14,11 @@ const COLOR_TOTAL = DOUYU.length + BRAND_COLORS.length;
 
 export function PaletteDock() {
   const color = useStudio((s) => s.color);
+  const projectBrand = useStudio((s) => s.project.brand) || 'douyu';
   const setColor = useStudio((s) => s.setColor);
   const recent = useStudio((s) => s.recentColors);
   const info = colorInfo(color);
-  const currentCode = beadCode(color);
+  const currentCode = beadCode(color, projectBrand);
   const showCodes = useStudio((s) => s.showCodes);
   const setShowCodes = useStudio((s) => s.setShowCodes);
   const [query, setQuery] = useState('');
@@ -25,6 +26,8 @@ export function PaletteDock() {
   const selectedRef = useRef<HTMLButtonElement>(null);
 
   const q = query.trim().toLowerCase();
+  const baseColors =
+    projectBrand === 'douyu' ? DOUYU : BRAND_COLORS.filter((c: any) => c.brand === projectBrand);
   const results = q
     ? [...DOUYU, ...BRAND_COLORS]
         .filter(
@@ -35,7 +38,7 @@ export function PaletteDock() {
             c.brandLabel.toLowerCase().includes(q),
         )
         .slice(0, 90)
-    : DOUYU;
+    : baseColors;
 
   const centerSelected = (behavior: ScrollBehavior = 'smooth') => {
     const box = scrollRef.current;

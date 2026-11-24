@@ -27,12 +27,16 @@ export type Guide = {
   pieces: Piece[];
 };
 
+export type BeadBrand = 'douyu' | 'hama' | 'perler' | 'artkal';
+
 export type Project = {
   id: string;
   title: string;
   loose: Bead[];
   pieces: Piece[];
   guide: Guide | null;
+  /** 这张图纸按哪个品牌的色卡输出；旧项目没有则按豆屿 */
+  brand?: BeadBrand;
   createdAt: number;
   updatedAt: number;
 };

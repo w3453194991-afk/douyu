@@ -81,8 +81,12 @@ export function MiniStudio({
   const loose = project.loose.length;
   const pieces = project.pieces;
   const info = colorInfo(color);
-  const currentCode = beadCode(color);
+  const currentCode = beadCode(color, project.brand || 'douyu');
   const cq = colorQuery.trim().toLowerCase();
+  const baseBrandColors =
+    (project.brand || 'douyu') === 'douyu'
+      ? PALETTE.map((c) => ({ ...c, brand: 'douyu', brandLabel: '豆屿' }))
+      : BRAND_COLORS.filter((c: any) => c.brand === (project.brand || 'douyu'));
   const colorResults = cq
     ? [...PALETTE.map((c) => ({ ...c, brand: 'douyu', brandLabel: '豆屿' })), ...BRAND_COLORS]
         .filter(
@@ -93,7 +97,7 @@ export function MiniStudio({
             c.brandLabel.toLowerCase().includes(cq),
         )
         .slice(0, 80)
-    : PALETTE.map((c) => ({ ...c, brand: 'douyu', brandLabel: '豆屿' }));
+    : baseBrandColors;
   const progress = project.guide
     ? guideProgress(project.guide, project.loose, project.pieces)
     : null;

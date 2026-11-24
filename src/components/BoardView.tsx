@@ -471,7 +471,7 @@ export function BoardView({
       ctx.font = `700 ${font}px "PingFang SC","Microsoft YaHei",sans-serif`;
       const label = (x: number, y: number, hex: string, guide = false) => {
         if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
-        const raw = beadCode(hex).code;
+        const raw = beadCode(hex, project.brand || 'douyu').code;
         if (!raw) return;
         // 缩到一格只有十来个像素时，P08 只留 08，保证还能看见编号。
         const code = compact ? raw.replace(/^[A-Za-z]+/, '') : raw;

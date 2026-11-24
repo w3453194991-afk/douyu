@@ -70,7 +70,7 @@ function renderBoardPage(
 ): PatternSheetData {
   const title = project.title || '无题小岛';
   const fullMetrics = projectMetrics(project);
-  const stats = colorStats(seg.beads);
+  const stats = colorStats(seg.beads, project.brand || 'douyu');
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;

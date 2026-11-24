@@ -10,6 +10,13 @@ import { cmText } from '../lib/metrics';
 
 type Source = { img: HTMLImageElement; url: string; name: string };
 
+const OUTPUT_BRANDS = [
+  { id: 'douyu' as const, label: '豆屿', count: 36 },
+  { id: 'hama' as const, label: 'Hama', count: 101 },
+  { id: 'perler' as const, label: 'Perler', count: 170 },
+  { id: 'artkal' as const, label: 'Artkal', count: 225 },
+];
+
 function PatternCanvas({ result }: { result: PatternResult }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -98,7 +105,8 @@ function PatternStudioBody({
   const [source, setSource] = useState<Source | null>(null);
   const [options, setOptions] = useState<PatternOptions>({
     width: 48,
-    colorLimit: 36,
+    colorLimit: 0,
+    brand: 'douyu',
     style: 'original',
     dither: false,
     dropBackground: false,
@@ -178,6 +186,7 @@ function PatternStudioBody({
                 cols: gridCols,
                 rows: gridRows,
                 colorLimit: options.colorLimit,
+                brand: options.brand,
                 skipWhite: gridSkipWhite,
               })
             : imageToPattern(source.img, options),
@@ -363,7 +372,7 @@ function PatternStudioBody({
       setConfirm(true);
       return;
     }
-    importProject(result.beads, title || '照片图纸');
+    importProject(result.beads, title || '照片图纸', options.brand);
     toast('success', '图纸铺到板上了', `${result.total} 颗豆 · 可以逐颗改了`);
     onClose();
     onImported?.();
@@ -377,7 +386,7 @@ function PatternStudioBody({
           <h2>照片转图纸</h2>
           <p>选一张图或 PDF，自动配成豆屿色卡，再一颗一颗改。</p>
           <p className="pattern-brand-note">
-            自动配豆固定用豆屿 P01–P36 色卡；Hama / Perler / Artkal 色号要在底部色卡搜索里手动换。
+            自动配豆默认用豆屿 P01–P36 色卡；右侧「输出色卡」可切换 Hama / Perler / Artkal，直接按对应品牌色号匹配。
           </p>
         </div>
         <div className="pattern-head-actions">
@@ -554,6 +563,30 @@ function PatternStudioBody({
               </button>
             </div>
 
+            <div className="pattern-control">
+              <div className="pattern-label">
+                <span>输出色卡</span>
+                <b>
+                  {OUTPUT_BRANDS.find((b) => b.id === options.brand)?.label} ·{' '}
+                  {OUTPUT_BRANDS.find((b) => b.id === options.brand)?.count} 色
+                </b>
+              </div>
+              <div className="pattern-segment pattern-brand-tabs">
+                {OUTPUT_BRANDS.map((b) => (
+                  <button
+                    key={b.id}
+                    className={options.brand === b.id ? 'on' : ''}
+                    onClick={() => setOptions((o) => ({ ...o, brand: b.id }))}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+              <p className="pattern-hint">
+                自动配豆和导入后的豆子编号都会按这个品牌色卡走；选 Perler / Artkal 后不再只输出豆屿 P 号。
+              </p>
+            </div>
+
             <div className="pattern-control pattern-photo-only">
               <div className="pattern-label">
                 <span>图纸大小</span>
@@ -645,20 +678,20 @@ function PatternStudioBody({
             <div className="pattern-control">
               <div className="pattern-label">
                 <span>用色数量</span>
-                <b>{options.colorLimit >= 36 ? '全部色卡' : `${options.colorLimit} 色`}</b>
+                <b>{options.colorLimit === 0 ? '全部色卡' : `${options.colorLimit} 色`}</b>
               </div>
               <div className="pattern-segment">
-                {[8, 16, 24, 36].map((n) => (
+                {[8, 16, 24, 0].map((n) => (
                   <button
                     key={n}
                     className={options.colorLimit === n ? 'on' : ''}
                     onClick={() => setOptions((o) => ({ ...o, colorLimit: n }))}
                   >
-                    {n === 36 ? '全部' : `${n} 色`}
+                    {n === 0 ? '全部' : `${n} 色`}
                   </button>
                 ))}
               </div>
-              <p className="pattern-hint">色少更像像素画，色多更像照片；可以导入后再改。</p>
+              <p className="pattern-hint">色少更像像素画，色多更像照片；0 表示使用整个输出色卡。</p>
             </div>
 
             <div className="pattern-control pattern-photo-only">

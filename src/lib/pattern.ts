@@ -1,15 +1,18 @@
 import type { Bead } from '../types';
 import { PALETTE } from '../../shared/palette.mjs';
+import { BRANDS } from '../../shared/brands.mjs';
 import type { ColorStat } from './metrics';
-import { colorStats } from './metrics';
 
 export type PatternStyle = 'original' | 'crisp' | 'soft';
+export type PatternBrand = 'douyu' | 'hama' | 'perler' | 'artkal';
 
 export type PatternOptions = {
   /** 目标宽度（豆格），高度按原图比例走，最长边不超过 96 */
   width: number;
-  /** 限定用色数量；36 表示全部色卡 */
+  /** 限定用色数量；0 表示不限制，使用完整输出色卡 */
   colorLimit: number;
+  /** 输出色卡：豆屿 / Hama / Perler / Artkal */
+  brand: PatternBrand;
   style: PatternStyle;
   /** Floyd–Steinberg 抖动，照片渐变更自然，但豆子会显得更碎 */
   dither: boolean;
@@ -34,16 +37,51 @@ export type GridPatternOptions = {
   cols: number;
   rows: number;
   colorLimit: number;
+  brand: PatternBrand;
   /** 跳过接近白色的格子（图纸空白格） */
   skipWhite: boolean;
 };
 
 type RGB = { r: number; g: number; b: number };
+type PaletteRGB = RGB & { hex: string; code: string; name: string };
 
-const PALETTE_RGB = PALETTE.map((c) => {
-  const n = parseInt(c.hex.slice(1), 16);
-  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255, hex: c.hex };
-});
+function buildPalette(brand: PatternBrand): PaletteRGB[] {
+  const list = brand === 'douyu' ? PALETTE : BRANDS[brand]?.colors || PALETTE;
+  return list.map((c: any) => {
+    const n = parseInt(c.hex.slice(1), 16);
+    return {
+      r: (n >> 16) & 255,
+      g: (n >> 8) & 255,
+      b: n & 255,
+      hex: c.hex,
+      code: c.code,
+      name: c.name,
+    };
+  });
+}
+
+const PALETTES: Record<PatternBrand, PaletteRGB[]> = {
+  douyu: buildPalette('douyu'),
+  hama: buildPalette('hama'),
+  perler: buildPalette('perler'),
+  artkal: buildPalette('artkal'),
+};
+
+const PALETTE_RGB = PALETTES.douyu;
+
+function statsFor(beads: Bead[], pool: PaletteRGB[]): ColorStat[] {
+  const counts = new Map<string, number>();
+  for (const b of beads) {
+    const key = b.c.toUpperCase();
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([hex, count]) => {
+      const p = pool.find((c) => c.hex.toUpperCase() === hex);
+      return { hex, count, code: p?.code || '—', name: p?.name || '自由色' };
+    })
+    .sort((a, b) => b.count - a.count);
+}
 
 function clamp(v: number, min = 0, max = 255): number {
   return Math.max(min, Math.min(max, v));
@@ -72,7 +110,7 @@ function adjustStyle(r: number, g: number, b: number, style: PatternStyle): RGB 
 }
 
 /** 红均值加权，比纯 RGB 欧氏距离更贴近肤色和暖色 */
-function distance(r: number, g: number, b: number, p: (typeof PALETTE_RGB)[number]): number {
+function distance(r: number, g: number, b: number, p: PaletteRGB): number {
   const rm = (r + p.r) / 2;
   const dr = r - p.r;
   const dg = g - p.g;
@@ -80,7 +118,7 @@ function distance(r: number, g: number, b: number, p: (typeof PALETTE_RGB)[numbe
   return (2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db;
 }
 
-function nearest(r: number, g: number, b: number, pool = PALETTE_RGB) {
+function nearest(r: number, g: number, b: number, pool: PaletteRGB[] = PALETTE_RGB) {
   let best = pool[0];
   let bestD = Infinity;
   for (const p of pool) {
@@ -117,6 +155,7 @@ export function loadImageFile(file: File): Promise<{ img: HTMLImageElement; url:
 }
 
 export function imageToPattern(img: HTMLImageElement, options: PatternOptions): PatternResult {
+  const pool = PALETTES[options.brand || 'douyu'];
   const { w, h } = targetGrid(options.width, img.naturalWidth, img.naturalHeight);
   const canvas = document.createElement('canvas');
   canvas.width = w;
@@ -225,7 +264,7 @@ export function imageToPattern(img: HTMLImageElement, options: PatternOptions): 
       rr = clamp(rr);
       gg = clamp(gg);
       bb = clamp(bb);
-      const match = nearest(rr, gg, bb);
+      const match = nearest(rr, gg, bb, pool);
       mapped[i] = { x, y, hex: match.hex };
       if (err) {
         const er = rr - match.r;
@@ -251,8 +290,8 @@ export function imageToPattern(img: HTMLImageElement, options: PatternOptions): 
 
   const unique = new Set(beads.map((b) => b.c.toUpperCase()));
   if (options.colorLimit > 0 && unique.size > options.colorLimit) {
-    const ranked = colorStats(beads).slice(0, options.colorLimit);
-    const keep = ranked.map((s) => PALETTE_RGB.find((p) => p.hex.toUpperCase() === s.hex.toUpperCase())!);
+    const ranked = statsFor(beads, pool).slice(0, options.colorLimit);
+    const keep = ranked.map((s) => pool.find((p) => p.hex.toUpperCase() === s.hex.toUpperCase())!);
     beads = beads.map((b) => {
       if (keep.some((p) => p.hex.toUpperCase() === b.c.toUpperCase())) return b;
       const n = parseInt(b.c.slice(1), 16);
@@ -287,7 +326,7 @@ export function imageToPattern(img: HTMLImageElement, options: PatternOptions): 
     sourceH: h,
     width: maxX - minX + 1,
     height: maxY - minY + 1,
-    colors: colorStats(beads),
+    colors: statsFor(beads, pool),
     total: beads.length,
   };
 }
@@ -301,6 +340,7 @@ export const PATTERN_PRESETS = [
 
 /** 给已经裁到网格外框的图纸/PDF 页按行列逐格取色，适合打印图纸翻豆图。 */
 export function imageToGridPattern(img: HTMLImageElement, options: GridPatternOptions): PatternResult {
+  const pool = PALETTES[options.brand || 'douyu'];
   const cols = Math.max(2, Math.min(160, Math.round(options.cols)));
   const rows = Math.max(2, Math.min(160, Math.round(options.rows)));
   const maxSide = 2400;
@@ -345,15 +385,15 @@ export function imageToGridPattern(img: HTMLImageElement, options: GridPatternOp
       a /= n;
       if (a < 32) continue;
       if (options.skipWhite && r > 242 && g > 242 && b > 242) continue;
-      const match = nearest(r, g, b);
+      const match = nearest(r, g, b, pool);
       beads.push({ x, y, c: match.hex });
     }
   }
 
   const unique = new Set(beads.map((b) => b.c.toUpperCase()));
   if (options.colorLimit > 0 && unique.size > options.colorLimit) {
-    const ranked = colorStats(beads).slice(0, options.colorLimit);
-    const keep = ranked.map((s) => PALETTE_RGB.find((p) => p.hex.toUpperCase() === s.hex.toUpperCase())!);
+    const ranked = statsFor(beads, pool).slice(0, options.colorLimit);
+    const keep = ranked.map((s) => pool.find((p) => p.hex.toUpperCase() === s.hex.toUpperCase())!);
     beads = beads.map((b) => {
       if (keep.some((p) => p.hex.toUpperCase() === b.c.toUpperCase())) return b;
       const n = parseInt(b.c.slice(1), 16);
@@ -367,7 +407,7 @@ export function imageToGridPattern(img: HTMLImageElement, options: GridPatternOp
     sourceH: rows,
     width: cols,
     height: rows,
-    colors: colorStats(beads),
+    colors: statsFor(beads, pool),
     total: beads.length,
   };
 }
