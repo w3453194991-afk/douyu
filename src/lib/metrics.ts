@@ -1,6 +1,7 @@
 import type { Bead, Project } from '../types';
 import { colorInfo } from '../../shared/palette.mjs';
 import { nearestBrand } from '../../shared/brands.mjs';
+import { beadCode } from './beadCode';
 
 export type ColorStat = {
   hex: string;
@@ -38,6 +39,10 @@ export function colorStats(beads: Bead[], brand: Project['brand'] = 'douyu'): Co
   }
   return [...counts.entries()]
     .map(([hex, count]) => {
+      if (brand === 'mixed') {
+        const hit = beadCode(hex, 'mixed');
+        return { hex, count, code: hit.code, name: hit.name };
+      }
       if (brand && brand !== 'douyu') {
         const near = nearestBrand(hex, brand);
         return { hex, count, code: near.code, name: near.name };

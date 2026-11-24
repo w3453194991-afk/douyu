@@ -15,6 +15,7 @@ const OUTPUT_BRANDS = [
   { id: 'hama' as const, label: 'Hama', count: 101 },
   { id: 'perler' as const, label: 'Perler', count: 170 },
   { id: 'artkal' as const, label: 'Artkal', count: 225 },
+  { id: 'mixed' as const, label: '全部', count: 512 },
 ];
 
 function PatternCanvas({ result }: { result: PatternResult }) {
@@ -583,7 +584,7 @@ function PatternStudioBody({
                 ))}
               </div>
               <p className="pattern-hint">
-                输出色卡一次只选一个品牌：豆屿 / Hama / Perler / Artkal。不同品牌的同号不一定是同一种豆，混在一起不好买。
+                输出色卡一次只选一个品牌；「全部」会混合豆屿/Hama/Perler/Artkal 的全部颜色，适合只想看效果，买豆时仍要核对品牌和色号。
               </p>
             </div>
 

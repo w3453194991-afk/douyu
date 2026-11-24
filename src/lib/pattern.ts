@@ -4,7 +4,7 @@ import { BRANDS } from '../../shared/brands.mjs';
 import type { ColorStat } from './metrics';
 
 export type PatternStyle = 'original' | 'crisp' | 'soft';
-export type PatternBrand = 'douyu' | 'hama' | 'perler' | 'artkal';
+export type PatternBrand = 'douyu' | 'hama' | 'perler' | 'artkal' | 'mixed';
 
 export type PatternOptions = {
   /** 目标宽度（豆格），高度按原图比例走，最长边不超过 96 */
@@ -46,18 +46,29 @@ type RGB = { r: number; g: number; b: number };
 type PaletteRGB = RGB & { hex: string; code: string; name: string };
 
 function buildPalette(brand: PatternBrand): PaletteRGB[] {
-  const list = brand === 'douyu' ? PALETTE : BRANDS[brand]?.colors || PALETTE;
-  return list.map((c: any) => {
+  const list =
+    brand === 'douyu'
+      ? PALETTE
+      : brand === 'mixed'
+        ? [...PALETTE, ...Object.values(BRANDS).flatMap((b: any) => b.colors)]
+        : BRANDS[brand]?.colors || PALETTE;
+  const seen = new Set<string>();
+  const out: PaletteRGB[] = [];
+  for (const c of list as any[]) {
+    const key = String(c.hex).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
     const n = parseInt(c.hex.slice(1), 16);
-    return {
+    out.push({
       r: (n >> 16) & 255,
       g: (n >> 8) & 255,
       b: n & 255,
       hex: c.hex,
       code: c.code,
       name: c.name,
-    };
-  });
+    });
+  }
+  return out;
 }
 
 const PALETTES: Record<PatternBrand, PaletteRGB[]> = {
@@ -65,6 +76,7 @@ const PALETTES: Record<PatternBrand, PaletteRGB[]> = {
   hama: buildPalette('hama'),
   perler: buildPalette('perler'),
   artkal: buildPalette('artkal'),
+  mixed: buildPalette('mixed'),
 };
 
 const PALETTE_RGB = PALETTES.douyu;

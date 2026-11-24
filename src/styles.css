@@ -6611,3 +6611,8 @@ kbd {
   font-size: 8px;
   letter-spacing: 0;
 }
+
+.pattern-brand-tabs button:nth-child(5) {
+  color: var(--accent-deep);
+  font-weight: 700;
+}

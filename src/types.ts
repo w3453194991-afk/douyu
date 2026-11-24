@@ -27,7 +27,7 @@ export type Guide = {
   pieces: Piece[];
 };
 
-export type BeadBrand = 'douyu' | 'hama' | 'perler' | 'artkal';
+export type BeadBrand = 'douyu' | 'hama' | 'perler' | 'artkal' | 'mixed';
 
 export type Project = {
   id: string;

@@ -27,7 +27,11 @@ export function PaletteDock() {
 
   const q = query.trim().toLowerCase();
   const baseColors =
-    projectBrand === 'douyu' ? DOUYU : BRAND_COLORS.filter((c: any) => c.brand === projectBrand);
+    projectBrand === 'douyu'
+      ? DOUYU
+      : projectBrand === 'mixed'
+        ? [...DOUYU, ...BRAND_COLORS]
+        : BRAND_COLORS.filter((c: any) => c.brand === projectBrand);
   const results = q
     ? [...DOUYU, ...BRAND_COLORS]
         .filter(

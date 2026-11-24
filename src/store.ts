@@ -51,7 +51,7 @@ export function loadProject(): Project {
           t: pc.t && Array.isArray(pc.t.p) && Array.isArray(pc.t.r) ? pc.t : { p: [0, 0, 0], r: [0, 0, 0] },
         })),
       guide: p.guide && Array.isArray(p.guide.pieces) ? p.guide : null,
-      brand: p.brand === 'hama' || p.brand === 'perler' || p.brand === 'artkal' ? p.brand : 'douyu',
+      brand: p.brand === 'hama' || p.brand === 'perler' || p.brand === 'artkal' || p.brand === 'mixed' ? p.brand : 'douyu',
       createdAt: p.createdAt || Date.now(),
       updatedAt: p.updatedAt || Date.now(),
     };

@@ -86,7 +86,12 @@ export function MiniStudio({
   const baseBrandColors =
     (project.brand || 'douyu') === 'douyu'
       ? PALETTE.map((c) => ({ ...c, brand: 'douyu', brandLabel: '豆屿' }))
-      : BRAND_COLORS.filter((c: any) => c.brand === (project.brand || 'douyu'));
+      : (project.brand || 'douyu') === 'mixed'
+        ? [
+            ...PALETTE.map((c) => ({ ...c, brand: 'douyu', brandLabel: '豆屿' })),
+            ...BRAND_COLORS,
+          ]
+        : BRAND_COLORS.filter((c: any) => c.brand === (project.brand || 'douyu'));
   const colorResults = cq
     ? [...PALETTE.map((c) => ({ ...c, brand: 'douyu', brandLabel: '豆屿' })), ...BRAND_COLORS]
         .filter(
