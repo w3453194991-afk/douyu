@@ -50,6 +50,8 @@
 
 详细说明见 [wechat-mini/README.md](wechat-mini/README.md)。真机/正式版的 `web-view` 需要 HTTPS 业务域名，配置方法也写在那里。
 
+小程序名称、简称、简介和头像素材放在 [docs/brand/wechat-profile.md](docs/brand/wechat-profile.md)。
+
 > 小程序的名字和头像跟着 **AppID / 公众平台账号** 走，不是代码里写的。不要复用已有小程序的 AppID，否则手机上显示的会是那个已有小程序的名字（例如「冰箱对对碰」）；要叫「豆屿」需要新建自己的小程序 AppID。
 
 ## 这次补上的图纸与集市能力
